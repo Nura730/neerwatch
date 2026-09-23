@@ -10,11 +10,14 @@
     "seed": "node seed/seed.js"
   },
   "jest": {
-    "testMatch": ["**/tests/**/*.test.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
     "testEnvironment": "node",
     "testTimeout": 600000
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongoose": "^8.4.0"
