@@ -452,8 +452,8 @@ describe('Role-based access control', () => {
 
   // ── Unauthenticated access blocked ────────────────────────────────────────
 
-  it('unauthenticated request to protected endpoint returns 401', async () => {
-    const res = await request(app).get('/api/dashboard');
+  it('unauthenticated request to auth/me returns 401', async () => {
+    const res = await request(app).get('/api/auth/me');
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
   });

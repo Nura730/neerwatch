@@ -6,6 +6,6 @@ const rainfallSchema = new mongoose.Schema({
   recordedAt:  { type: Date, required: true },
 });
 
-rainfallSchema.index({ wardId: 1, recordedAt: 1 });
+rainfallSchema.index({ wardId: 1, recordedAt: 1 }, { unique: true });
 
 module.exports = mongoose.model('Rainfall', rainfallSchema);

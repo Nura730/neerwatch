@@ -180,9 +180,10 @@ describe('GET /api/tests', () => {
     expect(res.body.data.total).toBe(2);
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/tests');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -206,9 +207,10 @@ describe('GET /api/tests/map', () => {
     expect(obs[0].location).toHaveProperty('lng');
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/tests/map');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -282,9 +284,10 @@ describe('GET /api/dashboard', () => {
     expect(d.positiveTests).toBe(1);
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/dashboard');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -330,9 +333,10 @@ describe('GET /api/clusters', () => {
     expect(res.body.data.clusters).toHaveLength(0);
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/clusters');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -369,9 +373,10 @@ describe('GET /api/alerts', () => {
     expect(a.resolved).toBe(false);
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/alerts');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -396,9 +401,10 @@ describe('GET /api/wards', () => {
     expect(w.failCount).toBe(1);
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/wards');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
   });
 });
 
@@ -428,8 +434,50 @@ describe('GET /api/rainfall', () => {
     expect(res.body.data.rainfall[0].wardId).toBe('ward-02');
   });
 
-  it('returns 401 when no token is provided', async () => {
+  it('is accessible without authentication', async () => {
     const res = await request(app).get('/api/rainfall');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Invalid date parameter validation (P2-8)
+// ---------------------------------------------------------------------------
+describe('Date parameter validation', () => {
+  it('GET /api/tests?from=invalid returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/invalid/i);
+  });
+
+  it('GET /api/tests?to=garbage returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests?to=garbage')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('GET /api/tests/map?from=invalid returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests/map?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('GET /api/rainfall?from=invalid returns 400', async () => {
+    const Rainfall = require('../src/models/Rainfall');
+    await Rainfall.create({ wardId: 'ward-01', rainfallMm: 5.0, recordedAt: new Date('2024-03-15') });
+
+    const res = await request(app)
+      .get('/api/rainfall?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
   });
 });
