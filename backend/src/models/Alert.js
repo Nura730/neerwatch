@@ -6,7 +6,8 @@ const alertSchema = new mongoose.Schema(
     severity:  { type: String, default: 'high' },
     message:   { type: String, required: true },
     wardId:    { type: String, required: true },
-    resolved:  { type: Boolean, default: false },
+    resolved:   { type: Boolean, default: false },
+    resolvedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

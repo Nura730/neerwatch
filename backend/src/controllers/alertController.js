@@ -1,16 +1,18 @@
+const mongoose = require('mongoose');
 const Alert = require('../models/Alert');
-const { successResponse } = require('../utils/response');
+const { successResponse, errorResponse } = require('../utils/response');
 
 function formatAlert(doc) {
   const a = doc.toObject ? doc.toObject() : doc;
   return {
-    id:        a._id.toString(),
-    clusterId: a.clusterId.toString(),
-    severity:  a.severity,
-    message:   a.message,
-    wardId:    a.wardId,
-    createdAt: a.createdAt,
-    resolved:  a.resolved,
+    id:         a._id.toString(),
+    clusterId:  a.clusterId.toString(),
+    severity:   a.severity,
+    message:    a.message,
+    wardId:     a.wardId,
+    createdAt:  a.createdAt,
+    resolved:   a.resolved,
+    resolvedAt: a.resolvedAt || null,
   };
 }
 
@@ -28,4 +30,27 @@ async function listAlerts(req, res, next) {
   }
 }
 
-module.exports = { listAlerts };
+async function resolveAlert(req, res, next) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return errorResponse(res, 'Invalid alert id', 400);
+    }
+
+    const alert = await Alert.findById(req.params.id);
+    if (!alert) {
+      return errorResponse(res, 'Alert not found', 404);
+    }
+
+    if (!alert.resolved) {
+      alert.resolved   = true;
+      alert.resolvedAt = new Date();
+      await alert.save();
+    }
+
+    return successResponse(res, { alert: formatAlert(alert) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { listAlerts, resolveAlert };
