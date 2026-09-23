@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiData } from '../hooks/useApiData.js';
-import { getAlerts, getWards } from '../services/api.js';
+import { getAlerts, getWards, resolveAlert } from '../services/api.js';
 import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/ui/States.jsx';
 import { StatusBadge } from '../components/ui/StatusBadge.jsx';
 import { DataTable } from '../components/ui/DataTable.jsx';
@@ -11,14 +11,17 @@ import {
   Info,
   MapPin,
   RefreshCw,
-  Search,
-  ArrowRight
+  CheckCircle
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { canResolveAlert } from '../auth/permissions.js';
 
 export function AlertsPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [filterStatus, setFilterStatus] = useState('active'); // 'all' | 'active' | 'resolved'
   const [filterWard, setFilterWard] = useState('');
+  const [resolvingId, setResolvingId] = useState(null);
 
   const fetchAlerts = useCallback(() => {
     const params = {};
@@ -32,6 +35,18 @@ export function AlertsPage() {
 
   const alerts = alertsData?.alerts || [];
   const wards = wardsData?.wards || [];
+
+  const handleResolve = async (id) => {
+    try {
+      setResolvingId(id);
+      await resolveAlert(id);
+      await refetch();
+    } catch (err) {
+      alert(`Failed to resolve alert: ${err.message}`);
+    } finally {
+      setResolvingId(null);
+    }
+  };
 
   const displayedAlerts = alerts.filter(a => {
     if (filterStatus === 'resolved') return a.resolved;
@@ -99,12 +114,23 @@ export function AlertsPage() {
       key: 'actions',
       header: 'Actions',
       render: (a) => (
-        <button 
-          onClick={() => navigate(`/map?wardId=${a.wardId}`)}
-          className="nw-btn nw-btn-secondary nw-btn-sm"
-        >
-          <MapPin size={14} /> View Map
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate(`/map?wardId=${a.wardId}`)}
+            className="nw-btn nw-btn-secondary nw-btn-sm"
+          >
+            <MapPin size={14} /> View Map
+          </button>
+          {!a.resolved && user && canResolveAlert(user.role) && (
+            <button
+              onClick={() => handleResolve(a.id)}
+              disabled={resolvingId === a.id}
+              className="nw-btn nw-btn-primary nw-btn-sm"
+            >
+              <CheckCircle size={14} /> {resolvingId === a.id ? 'Resolving...' : 'Resolve'}
+            </button>
+          )}
+        </div>
       )
     }
   ];

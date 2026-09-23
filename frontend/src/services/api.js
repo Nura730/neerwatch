@@ -30,20 +30,32 @@ const USE_MOCK  = import.meta.env.VITE_USE_MOCK === 'true';
 /** Simulate network delay in mock mode for realistic UX. */
 const mockDelay = (ms = 300) => new Promise(r => setTimeout(r, ms));
 
+import { authService } from '../auth/authService.js';
+
 /**
  * Internal fetch wrapper.
  * Checks HTTP response, parses envelope, throws on success=false.
  */
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
+  
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const token = authService.getToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   let response;
   try {
-    response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options,
-    });
+    response = await fetch(url, { ...options, headers });
   } catch (networkError) {
     throw new Error(`Network error — unable to reach ${url}: ${networkError.message}`);
+  }
+
+  // Handle 401 globally
+  if (response.status === 401) {
+    window.dispatchEvent(new Event('nw:unauthorized'));
+    throw new Error('Unauthorized');
   }
 
   let body;
@@ -55,6 +67,7 @@ async function apiFetch(path, options = {}) {
 
   if (!body.success) {
     const msg = body.message || `Request failed with HTTP ${response.status}`;
+    // Optionally handle 403 differently if needed, but throwing Error is fine
     throw new Error(msg);
   }
 
@@ -184,6 +197,18 @@ export async function getAlerts(params = {}) {
     return MOCK_ALERTS.data;
   }
   return apiFetch(`/api/alerts${buildQuery(params)}`);
+}
+
+/**
+ * PATCH /api/alerts/:id/resolve
+ * Resolve an alert.
+ */
+export async function resolveAlert(id) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { id, resolved: true, resolvedAt: new Date().toISOString() };
+  }
+  return apiFetch(`/api/alerts/${id}/resolve`, { method: 'PATCH' });
 }
 
 // ── Rainfall ──────────────────────────────────────────────────────────────────

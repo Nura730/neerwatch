@@ -9,11 +9,16 @@ import { FilterBar } from '../components/ui/FilterBar.jsx';
 import { ObservationDetailDrawer } from '../components/ui/ObservationDetailDrawer.jsx';
 import { formatDateTime, testTypeLabel, testTypeUnit, formatNumber } from '../utils/format.js';
 import { classifyResult } from '../services/mock.js';
-import { MapPin, MapPinOff, RefreshCw, Eye } from 'lucide-react';
+import { MapPin, MapPinOff, RefreshCw, Eye, Plus } from 'lucide-react';
+
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { canCreateTest } from '../auth/permissions.js';
 
 const TEST_TYPES = ['TDS', 'pH', 'turbidity', 'coliform'];
 
 export function ObservationListPage() {
+  const { user } = useAuth();
   const [filters, setFilters] = useState({ wardId: '', testType: '', from: '', to: '' });
   const [showLocal, setShowLocal] = useState(true);
   const [localObs, setLocalObs] = useState([]);
@@ -126,9 +131,16 @@ export function ObservationListPage() {
         title="Field Observations"
         description={`${formatNumber(data?.total || backendObs.length)} total observations${localOnly.length > 0 ? ` · ${localOnly.length} local (unsynced)` : ''}`}
         actions={
-          <button className="nw-btn nw-btn-secondary" onClick={refetch}>
-            <RefreshCw size={14} /> Refresh
-          </button>
+          <div className="flex gap-2">
+            <button className="nw-btn nw-btn-secondary" onClick={refetch}>
+              <RefreshCw size={14} /> Refresh
+            </button>
+            {user && canCreateTest(user.role) && (
+              <Link to="/observations/new" className="nw-btn nw-btn-primary">
+                <Plus size={14} /> Create Test
+              </Link>
+            )}
+          </div>
         }
       />
 
