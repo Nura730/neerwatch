@@ -97,11 +97,11 @@ export const MOCK_TESTS_MAP = {
 // These are approximate thresholds used only for visual classification.
 // The backend is the authority on contamination determination.
 export const TEST_THRESHOLDS = {
-  TDS: 300,         // >300 mg/L elevated
-  pH_low: 6.5,      // <6.5 or >8.5 elevated
+  TDS: 500,         // >500 mg/L failing — matches backend testThresholds.js
+  pH_low: 6.5,      // <6.5 or >8.5 failing
   pH_high: 8.5,
-  turbidity: 4,     // >4 NTU elevated
-  coliform: 1,      // >1 CFU/100mL elevated
+  turbidity: 4,     // >4 NTU failing
+  coliform: 0,      // >0 CFU/100mL failing
 };
 
 /**

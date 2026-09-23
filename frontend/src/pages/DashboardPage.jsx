@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, MapPin, RefreshCw } from 'lucide-react';
 import { useApiData } from '../hooks/useApiData.js';
 import { getDashboard, getClusters, getAlerts } from '../services/api.js';
@@ -8,7 +8,8 @@ import { StatusBadge } from '../components/ui/StatusBadge.jsx';
 import { LoadingState, ErrorState, PageHeader } from '../components/ui/States.jsx';
 import { formatDateTime, formatMetres, testTypeLabel, formatNumber } from '../utils/format.js';
 
-export function DashboardPage({ pendingCount }) {
+export function DashboardPage() {
+  const { pendingCount } = useOutletContext();
   const dashFetch  = useCallback(() => getDashboard(), []);
   const clusterFetch = useCallback(() => getClusters({ active: true }), []);
   const alertFetch = useCallback(() => getAlerts({ active: true }), []);

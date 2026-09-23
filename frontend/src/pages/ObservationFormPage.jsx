@@ -14,9 +14,9 @@ import {
 } from 'lucide-react';
 
 const TEST_TYPES = [
-  { value: 'TDS', label: 'TDS (Total Dissolved Solids)', unit: 'mg/L', hint: 'Safe: < 500 mg/L · Failing: ≥ 500 mg/L' },
+  { value: 'TDS', label: 'TDS (Total Dissolved Solids)', unit: 'mg/L', hint: 'Safe: ≤ 500 mg/L · Failing: > 500 mg/L' },
   { value: 'pH', label: 'pH Value', unit: 'pH', hint: 'Safe: 6.5 – 8.5 · Failing: < 6.5 or > 8.5' },
-  { value: 'turbidity', label: 'Turbidity', unit: 'NTU', hint: 'Safe: < 5 NTU · Failing: ≥ 5 NTU' },
+  { value: 'turbidity', label: 'Turbidity', unit: 'NTU', hint: 'Safe: ≤ 4 NTU · Failing: > 4 NTU' },
   { value: 'coliform', label: 'Coliform Bacteria', unit: 'CFU/100mL', hint: 'Safe: 0 CFU · Failing: > 0 CFU' },
 ];
 
