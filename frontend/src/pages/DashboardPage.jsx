@@ -45,18 +45,18 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-bold text-nw-text m-0">Dashboard</h1>
           <p className="text-sm text-nw-text-muted m-0">System-wide operational overview</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center flex-wrap gap-2">
           <div className={`flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-full ${isOnline ? 'bg-nw-pass-bg text-nw-pass' : 'bg-nw-warn-bg text-nw-warn'}`}>
             {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
             {isOnline ? 'System Online' : 'System Offline'}
           </div>
           {lastSyncTime && (
-            <div className="text-xs text-nw-text-muted">
+            <div className="hidden sm:block text-xs text-nw-text-muted">
               Last sync: {formatDateTime(lastSyncTime)}
             </div>
           )}
@@ -111,9 +111,9 @@ export function DashboardPage() {
         )}
       </section>
 
-      <section className="flex-1 flex gap-6 min-h-[400px]">
+      <section className="lg:flex-1 flex flex-col lg:flex-row gap-6 lg:min-h-[400px]">
         {/* Main interactive map */}
-        <div className="flex-1 bg-nw-surface border border-nw-border rounded-md shadow-nw-sm flex flex-col overflow-hidden relative">
+        <div className="h-[300px] lg:h-auto lg:flex-1 bg-nw-surface border border-nw-border rounded-md shadow-nw-sm flex flex-col overflow-hidden relative">
           <div className="absolute top-4 left-14 z-[400] bg-white/90 backdrop-blur px-3 py-2 rounded shadow-sm border border-nw-border text-xs font-semibold text-nw-text-muted uppercase tracking-wide">
             Live Observation Map
           </div>
@@ -158,7 +158,7 @@ export function DashboardPage() {
         </div>
 
         {/* Sidebar: Requires Attention */}
-        <div className="w-[340px] bg-nw-surface border border-nw-border rounded-md shadow-nw-sm flex flex-col overflow-hidden">
+        <div className="h-[280px] lg:h-auto w-full lg:w-[340px] bg-nw-surface border border-nw-border rounded-md shadow-nw-sm flex flex-col overflow-hidden">
           <div className="p-4 border-b border-nw-border bg-nw-surface-2 flex items-center justify-between">
             <h2 className="text-sm font-bold text-nw-text uppercase tracking-wide">Requires Attention</h2>
             <span className="bg-nw-fail-bg text-nw-fail text-xs font-bold px-2 py-0.5 rounded-full">

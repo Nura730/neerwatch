@@ -1,4 +1,4 @@
-import { Wifi, WifiOff, RefreshCw, LogOut, User } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, LogOut, User, Menu } from 'lucide-react';
 import { formatRelative } from '../../utils/format.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { ROLES } from '../../auth/permissions.js';
@@ -9,13 +9,20 @@ const ROLE_LABELS = {
   [ROLES.ADMIN]: 'Administrator'
 };
 
-export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime }) {
+export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime, onMenuToggle }) {
   const { user, logout } = useAuth();
 
   return (
-    <header className="h-[60px] px-6 bg-white border-b border-nw-border flex items-center shrink-0 z-10 shadow-sm justify-between">
-      {/* Title */}
+    <header className="h-[60px] px-4 sm:px-6 bg-white border-b border-nw-border flex items-center shrink-0 z-10 shadow-sm justify-between">
+      {/* Hamburger (mobile only) + Title */}
       <div className="flex items-center">
+        <button
+          onClick={onMenuToggle}
+          className="md:hidden mr-3 -ml-1 p-2 rounded text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-2 transition-colors"
+          aria-label="Open navigation menu"
+        >
+          <Menu size={20} />
+        </button>
         <span className="font-bold text-[15px] text-nw-navy tracking-wide">
           NEERWATCH
         </span>
