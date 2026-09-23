@@ -48,6 +48,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     authService.clearToken();
     setUser(null);
+    window.location.href = '/dashboard';
   };
 
   const value = {

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useSyncEngine } from './hooks/useSyncEngine.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { AuthProvider } from './auth/AuthContext.jsx';
-import { ProtectedRoute } from './auth/ProtectedRoute.jsx';
+
 import { RoleGuard } from './auth/RoleGuard.jsx';
 import { canCreateTest, canSyncTests, canManageUsers } from './auth/permissions.js';
 
@@ -27,8 +27,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           
-          <Route element={<ProtectedRoute><AppShell {...syncEngine} /></ProtectedRoute>}>
-            <Route index element={<DashboardPage />} />
+          <Route element={<AppShell {...syncEngine} />}>
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<DashboardPage />} />
             <Route path="map" element={<MapPage />} />
             <Route path="observations" element={<ObservationListPage />} />
             <Route path="observations/new" element={
@@ -50,7 +51,7 @@ export default function App() {
                 <UsersPage />
               </RoleGuard>
             } />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

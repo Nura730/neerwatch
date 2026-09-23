@@ -55,7 +55,7 @@ export function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-8">
-          <h2 className="text-lg font-bold text-nw-text mb-6">Sign In</h2>
+          <h2 className="text-lg font-bold text-nw-text mb-6">Operational Access</h2>
 
           {error && (
             <div className="mb-6 p-3 bg-nw-fail-bg border border-[#FECACA] rounded text-nw-fail text-sm flex gap-2 items-start">
@@ -109,7 +109,7 @@ export function LoginPage() {
 
         <div className="p-6 bg-slate-50 border-t border-nw-border">
           <p className="text-xs text-nw-text-muted font-semibold uppercase tracking-wider mb-3 text-center">Demo Accounts</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => { setEmail('admin@neerwatch.local'); setPassword('ChangeThisPassword1!'); }}
@@ -123,13 +123,6 @@ export function LoginPage() {
               className="nw-btn nw-btn-secondary nw-btn-sm justify-center text-[11px]"
             >
               Operator
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEmail('viewer@neerwatch.local'); setPassword('ChangeThisPassword3!'); }}
-              className="nw-btn nw-btn-secondary nw-btn-sm justify-center text-[11px]"
-            >
-              Viewer
             </button>
           </div>
         </div>

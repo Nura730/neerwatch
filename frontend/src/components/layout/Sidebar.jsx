@@ -46,12 +46,9 @@ function NavItem({ to, icon: Icon, label, badge, end = false }) {
 
 export function Sidebar({ pendingCount }) {
   const { user } = useAuth();
-  
-  if (!user) return null; // Shouldn't happen in protected route, but safe guard
-
-  const role = user.role;
-  const showOperations = canCreateTest(role) || canSyncTests(role);
-  const showAdmin = canManageUsers(role);
+  const role = user ? user.role : null;
+  const showOperations = role && (canCreateTest(role) || canSyncTests(role));
+  const showAdmin = role && canManageUsers(role);
 
   return (
     <nav className="w-[240px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-slate-300" aria-label="Main navigation">

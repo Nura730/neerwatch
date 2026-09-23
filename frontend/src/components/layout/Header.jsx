@@ -62,7 +62,7 @@ export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime }) {
         </div>
 
         {/* User Identity & Logout */}
-        {user && (
+        {user ? (
           <div className="flex items-center gap-4 pl-4 border-l border-nw-border-2">
             <div className="flex items-center gap-2 text-right hidden md:flex">
               <div className="w-8 h-8 rounded-full bg-nw-surface-2 flex items-center justify-center text-nw-text-muted border border-nw-border-2">
@@ -82,6 +82,24 @@ export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime }) {
               <LogOut size={16} />
               <span className="hidden sm:inline-block">Logout</span>
             </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 pl-4 border-l border-nw-border-2">
+            <div className="flex items-center gap-2 text-right hidden md:flex">
+              <div className="w-8 h-8 rounded-full bg-nw-surface-2 flex items-center justify-center text-nw-text-muted border border-nw-border-2">
+                <User size={16} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-semibold text-nw-text leading-tight">Public</span>
+                <span className="text-[11px] text-nw-text-muted font-medium">Viewer</span>
+              </div>
+            </div>
+            <a
+              href="/login"
+              className="nw-btn nw-btn-primary nw-btn-sm"
+            >
+              Sign In
+            </a>
           </div>
         )}
       </div>

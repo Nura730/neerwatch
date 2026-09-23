@@ -1,13 +1,19 @@
 import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
 import { ShieldAlert } from 'lucide-react';
 
 export function RoleGuard({ isAllowed, children, fallback }) {
   const { user } = useAuth();
-
-  if (!user || !isAllowed(user.role)) {
+  
+  if (!user) {
+    // Unauthenticated user -> Login Required
     if (fallback !== undefined) return fallback;
+    return <Navigate to="/login" replace />;
+  }
 
+  if (!isAllowed(user.role)) {
+    // Authenticated but wrong role -> Access Denied
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-nw-surface border border-nw-border rounded shadow-nw-sm text-center">
         <ShieldAlert size={48} className="text-nw-fail mb-4" />
