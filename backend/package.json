@@ -6,11 +6,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --forceExit --runInBand"
+    "test": "jest --forceExit --runInBand",
+    "seed": "node seed/seed.js"
   },
   "jest": {
     "testMatch": ["**/tests/**/*.test.js"],
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testTimeout": 600000
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.0.0",
     "nodemon": "^3.1.4",
     "supertest": "^7.0.0"
   }
