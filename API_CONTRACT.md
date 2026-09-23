@@ -281,10 +281,25 @@ Observations without `location` are accepted and stored. They appear in list and
 {
   "success": true,
   "data": {
-    "processed": 5,
-    "created": 3,
-    "duplicates": 2,
-    "failed": 0
+    "processed": 3,
+    "created": 1,
+    "duplicates": 1,
+    "failed": 1,
+    "results": [
+      {
+        "clientId": "NW-LOCAL-uuid-001",
+        "status": "synced"
+      },
+      {
+        "clientId": "NW-LOCAL-uuid-002",
+        "status": "duplicate"
+      },
+      {
+        "clientId": "NW-LOCAL-uuid-003",
+        "status": "failed",
+        "message": "testType must be one of: TDS, pH, turbidity, coliform"
+      }
+    ]
   }
 }
 ```
@@ -295,6 +310,9 @@ Observations without `location` are accepted and stored. They appear in list and
 | `created` | Successfully inserted new observations |
 | `duplicates` | Skipped because `clientId` already existed |
 | `failed` | Rejected due to validation or unexpected error |
+| `results` | Per-observation result array; each entry carries `clientId`, `status` (`synced` \| `duplicate` \| `failed`), and an optional `message` for failed items |
+
+> **Contract change note (2026-09-23):** Added `results[]` array to sync response. The frontend sync engine requires per-`clientId` resolution to safely update IndexedDB records. Positional mapping of aggregate counts (`created`, `duplicates`, `failed`) to local records is unsafe and is explicitly prohibited. Backend must populate `results` for every observation in the batch.
 
 **Partial Success:** Items that fail validation are counted in `failed` but do not block the rest of the batch. The overall response is `200` as long as the batch was processed.
 
