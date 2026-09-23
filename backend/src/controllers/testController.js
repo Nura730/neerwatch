@@ -129,16 +129,27 @@ async function syncTests(req, res, next) {
 
     let created = 0, duplicates = 0, failed = 0;
     const processed = observations.length;
+    const results = [];
 
     for (const item of observations) {
       try {
         const errors = validateObservation(item);
-        if (errors.length) { failed++; continue; }
+        if (errors.length) {
+          failed++;
+          results.push({ clientId: item.clientId, status: 'failed' });
+          continue;
+        }
         await Observation.create(buildObsData(item));
         created++;
+        results.push({ clientId: item.clientId, status: 'created' });
       } catch (err) {
-        if (err.code === 11000) { duplicates++; }
-        else { failed++; }
+        if (err.code === 11000) {
+          duplicates++;
+          results.push({ clientId: item.clientId, status: 'duplicate' });
+        } else {
+          failed++;
+          results.push({ clientId: item.clientId, status: 'failed' });
+        }
       }
     }
 
@@ -146,7 +157,7 @@ async function syncTests(req, res, next) {
       runClusterDetection().catch((e) => console.error('Cluster detection error:', e.message));
     }
 
-    return successResponse(res, { processed, created, duplicates, failed });
+    return successResponse(res, { processed, created, duplicates, failed, results });
   } catch (err) {
     next(err);
   }

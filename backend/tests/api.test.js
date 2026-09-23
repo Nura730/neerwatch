@@ -239,6 +239,14 @@ describe('POST /api/tests/sync', () => {
     expect(res.body.data.created).toBe(2);
     expect(res.body.data.duplicates).toBe(1);
     expect(res.body.data.failed).toBe(1);
+
+    const results = res.body.data.results;
+    expect(Array.isArray(results)).toBe(true);
+    expect(results).toHaveLength(4);
+    expect(results.find(r => r.clientId === 'dup-01').status).toBe('duplicate');
+    expect(results.find(r => r.clientId === 'new-01').status).toBe('created');
+    expect(results.find(r => r.clientId === 'new-02').status).toBe('created');
+    expect(results.find(r => r.clientId === 'bad').status).toBe('failed');
   });
 
   it('returns 400 when observations is not an array', async () => {
