@@ -4,7 +4,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/',               requireAuth,                                   listAlerts);
+router.get('/',               listAlerts);
 router.patch('/:id/resolve',  requireAuth, requireRole('operator', 'admin'), resolveAlert);
 
 module.exports = router;

@@ -4,9 +4,9 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = Router();
 
-// All roles may read observations
-router.get('/map',   requireAuth, mapTests);
-router.get('/',      requireAuth, listTests);
+// Read-only endpoints — publicly accessible without authentication
+router.get('/map',   mapTests);
+router.get('/',      listTests);
 
 // Operators and admins may create/sync observations; viewers may not
 router.post('/sync', requireAuth, requireRole('operator', 'admin'), syncTests);
