@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+@theme {
+  --color-nw-bg: var(--nw-bg);
+  --color-nw-surface: var(--nw-surface);
+  --color-nw-surface-2: var(--nw-surface-2);
+  --color-nw-surface-3: var(--nw-surface-3);
+  --color-nw-border: var(--nw-border);
+  --color-nw-border-2: var(--nw-border-2);
+  --color-nw-text: var(--nw-text);
+  --color-nw-text-2: var(--nw-text-2);
+  --color-nw-text-muted: var(--nw-text-muted);
+  --color-nw-text-faint: var(--nw-text-faint);
+  --color-nw-navy: var(--nw-navy);
+  --color-nw-teal: var(--nw-teal);
+  --color-nw-pass: var(--nw-pass);
+  --color-nw-pass-bg: var(--nw-pass-bg);
+  --color-nw-fail: var(--nw-fail);
+  --color-nw-fail-bg: var(--nw-fail-bg);
+  --color-nw-warn: var(--nw-warn);
+  --color-nw-warn-bg: var(--nw-warn-bg);
+  --color-nw-neutral: var(--nw-neutral);
+  --color-nw-neutral-bg: var(--nw-neutral-bg);
+  --color-nw-cluster: var(--nw-cluster);
+  --color-nw-cluster-bg: var(--nw-cluster-bg);
+  --shadow-nw-sm: var(--nw-shadow-sm);
+  --shadow-nw: var(--nw-shadow);
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    NEERWATCH Design System
    Civic operations platform — calm, authoritative, information-dense
@@ -19,7 +46,7 @@
 
   /* Text */
   --nw-text:        #0F172A;
-  --nw-text-2:      #334155;
+  --nw-text-2:      #475569;
   --nw-text-muted:  #64748B;
   --nw-text-faint:  #94A3B8;
 

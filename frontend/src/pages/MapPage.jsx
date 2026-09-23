@@ -1,18 +1,16 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, Tooltip } from 'react-leaflet';
 import { useApiData } from '../hooks/useApiData.js';
-import { getTestsMap, getClusters, getRainfall } from '../services/api.js';
+import { getTestsMap, getClusters, getRainfall, getWards } from '../services/api.js';
 import { ClusterInvestigationPanel } from '../components/map/ClusterInvestigationPanel.jsx';
 import { LoadingState, ErrorState } from '../components/ui/States.jsx';
+import { FilterBar } from '../components/ui/FilterBar.jsx';
 import { formatDateTime, testTypeLabel, testTypeUnit } from '../utils/format.js';
 import { classifyResult } from '../services/mock.js';
-
-// Kochi/Ernakulam default centre
-const KOCHI_CENTER = [9.9312, 76.2673];
-const DEFAULT_ZOOM = 13;
+import { MapPin, Info, AlertTriangle, Layers } from 'lucide-react';
+import L from 'leaflet';
 
 // Fix Leaflet default icon issue in Vite
-import L from 'leaflet';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -20,65 +18,130 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
+const KOCHI_CENTER = [9.9312, 76.2673];
+const DEFAULT_ZOOM = 13;
+const TEST_TYPES = ['TDS', 'pH', 'turbidity', 'coliform'];
+
 export function MapPage() {
   const [selectedCluster, setSelectedCluster] = useState(null);
-
-  const mapFetch      = useCallback(() => getTestsMap(), []);
+  const [filters, setFilters] = useState({ wardId: '', testType: '', resultClass: '' });
+  
+  const mapFetch      = useCallback(() => getTestsMap(filters.wardId ? { wardId: filters.wardId } : {}), [filters.wardId]);
   const clusterFetch  = useCallback(() => getClusters(), []);
   const rainfallFetch = useCallback(() => getRainfall(), []);
+  const wardFetch     = useCallback(() => getWards(), []);
 
-  const { data: mapData,   loading: mapLoading,     error: mapError }   = useApiData(mapFetch);
+  const { data: mapData,   loading: mapLoading,     error: mapError }   = useApiData(mapFetch, [filters.wardId]);
   const { data: clusterD,  loading: clusterLoading, error: clusterError } = useApiData(clusterFetch);
   const { data: rainfallD }                                               = useApiData(rainfallFetch);
+  const { data: wardData }                                                = useApiData(wardFetch);
 
   const observations = mapData?.observations || [];
   const clusters     = clusterD?.clusters    || [];
   const rainfall     = rainfallD?.rainfall   || [];
+  const wards        = wardData?.wards       || [];
 
-  if (mapLoading || clusterLoading) return <LoadingState message="Loading map data…" />;
-  if (mapError)   return <ErrorState message={mapError} />;
-  if (clusterError) return <ErrorState message={clusterError} />;
+  // Client side filtering for testType and resultClass (since api doesn't natively support it on getTestsMap or we don't want to overfetch)
+  const filteredObservations = observations.filter(obs => {
+    if (filters.testType && obs.testType !== filters.testType) return false;
+    if (filters.resultClass) {
+      const classification = classifyResult(obs.testType, obs.result);
+      if (classification !== filters.resultClass) return false;
+    }
+    return true;
+  });
+
+  const activeFilters = [];
+  if (filters.wardId) activeFilters.push({ key: 'wardId', label: 'Ward', value: filters.wardId });
+  if (filters.testType) activeFilters.push({ key: 'testType', label: 'Type', value: testTypeLabel(filters.testType) });
+  if (filters.resultClass) activeFilters.push({ key: 'resultClass', label: 'Result', value: filters.resultClass === 'fail' ? 'Elevated' : 'Normal' });
+
+  const handleRemoveFilter = (key) => setFilters(f => ({ ...f, [key]: '' }));
+  const handleClearAll = () => setFilters({ wardId: '', testType: '', resultClass: '' });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', margin: '-24px' }}>
-
-      {/* ── Map toolbar ───────────────────────────────────────────────────── */}
-      <div style={{
-        padding: '10px 20px',
-        background: 'var(--nw-surface)',
-        borderBottom: '1px solid var(--nw-border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-      }}>
-        <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--nw-text)' }}>
-          Observation Map
+    <div className="flex flex-col h-[calc(100vh-100px)] -mx-6 -mt-6 -mb-6 bg-nw-bg">
+      {/* ── Toolbar ───────────────────────────────────────────────────────── */}
+      <div className="bg-nw-surface border-b border-nw-border px-6 py-3 flex items-center justify-between shrink-0 z-20">
+        <h1 className="text-lg font-bold text-nw-text m-0 flex items-center gap-2">
+          <MapPin size={18} className="text-nw-navy" /> Observation Map
         </h1>
-        <div style={{ display: 'flex', gap: 16, marginLeft: 'auto' }}>
-          <LegendItem color="var(--nw-fail)" label="Positive observation" />
-          <LegendItem color="var(--nw-pass)" label="Negative observation" />
-          <LegendItem color="var(--nw-warn)" label="Possible cluster" circle />
-        </div>
-        <div className="synthetic-banner" style={{ margin: 0 }}>
-          Synthetic demonstration data
+        
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 bg-nw-surface-2 px-3 py-1.5 rounded-full border border-nw-border-2">
+            <LegendItem color="#B91C1C" label="Elevated Result" />
+            <LegendItem color="#059669" label="Normal Result" />
+            <LegendItem color="#D97706" label="Possible Cluster" circle />
+          </div>
+          
+          <div className="bg-[#FFFBEB] border border-[#FDE68A] text-[#78350F] px-3 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5">
+            <AlertTriangle size={12} />
+            Synthetic demonstration data
+          </div>
         </div>
       </div>
 
+      <div className="px-6 pt-4 pb-2 shrink-0 bg-nw-bg z-10">
+        <FilterBar filters={activeFilters} onRemoveFilter={handleRemoveFilter} onClearAll={handleClearAll}>
+          <div className="flex items-center gap-2">
+            <Layers size={15} className="text-nw-text-muted" />
+            <span className="text-xs font-semibold text-nw-text mr-1">Map Layers:</span>
+          </div>
+          
+          <select
+            className="nw-input text-xs py-1.5 min-w-[130px] !w-auto"
+            value={filters.wardId}
+            onChange={e => setFilters(f => ({ ...f, wardId: e.target.value }))}
+          >
+            <option value="">All wards</option>
+            {wards.map(w => <option key={w.wardId} value={w.wardId}>{w.name || w.wardId}</option>)}
+          </select>
+          
+          <select
+            className="nw-input text-xs py-1.5 min-w-[130px] !w-auto"
+            value={filters.testType}
+            onChange={e => setFilters(f => ({ ...f, testType: e.target.value }))}
+          >
+            <option value="">All parameters</option>
+            {TEST_TYPES.map(t => <option key={t} value={t}>{testTypeLabel(t)}</option>)}
+          </select>
+
+          <select
+            className="nw-input text-xs py-1.5 min-w-[130px] !w-auto"
+            value={filters.resultClass}
+            onChange={e => setFilters(f => ({ ...f, resultClass: e.target.value }))}
+          >
+            <option value="">All results</option>
+            <option value="fail">Elevated (Fail)</option>
+            <option value="pass">Normal (Pass)</option>
+          </select>
+        </FilterBar>
+      </div>
+
       {/* ── Map + Panel ───────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      <div className="flex-1 flex overflow-hidden relative">
+        {(mapLoading || clusterLoading) && (
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-[2000] flex items-center justify-center">
+            <LoadingState message="Loading spatial data…" />
+          </div>
+        )}
+        
+        {mapError && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000]"><ErrorState message={mapError} /></div>}
+        {clusterError && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000]"><ErrorState message={clusterError} /></div>}
+
+        <div className="flex-1 relative bg-[#E5E3DF]">
           <MapContainer
             center={KOCHI_CENTER}
             zoom={DEFAULT_ZOOM}
-            style={{ width: '100%', height: '100%' }}
+            className="w-full h-full z-10"
             aria-label="Water quality observation map"
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
 
-            {/* Cluster circles — rendered first so markers appear on top */}
+            {/* Cluster circles */}
             {clusters.map(cluster => (
               <Circle
                 key={cluster.id}
@@ -87,29 +150,29 @@ export function MapPage() {
                 pathOptions={{
                   color: '#D97706',
                   fillColor: '#D97706',
-                  fillOpacity: 0.08,
+                  fillOpacity: 0.1,
                   weight: 2,
                   dashArray: '6 4',
                 }}
                 eventHandlers={{ click: () => setSelectedCluster(cluster) }}
               >
-                <Tooltip>
-                  Possible cluster — {testTypeLabel(cluster.testType)} — {cluster.wardId}
-                  {'\n'}Click to investigate
+                <Tooltip direction="top" opacity={1} className="font-sans text-xs">
+                  <div className="font-bold text-nw-warn">Possible Cluster</div>
+                  <div>{testTypeLabel(cluster.testType)} — {cluster.wardId}</div>
+                  <div className="text-nw-text-muted mt-1 text-[10px]">Click to investigate</div>
                 </Tooltip>
               </Circle>
             ))}
 
             {/* Observation markers */}
-            {observations.map(obs => {
+            {filteredObservations.map(obs => {
               if (!obs.location) return null;
-              const resultClass = classifyResult(obs.testType, obs.result);
-              const isFail = resultClass === 'fail';
+              const isFail = classifyResult(obs.testType, obs.result) === 'fail';
               return (
                 <CircleMarker
                   key={obs.clientId}
                   center={[obs.location.lat, obs.location.lng]}
-                  radius={6}
+                  radius={isFail ? 7 : 5}
                   pathOptions={{
                     color: isFail ? '#9B1C1C' : '#065F46',
                     fillColor: isFail ? '#B91C1C' : '#059669',
@@ -117,35 +180,37 @@ export function MapPage() {
                     weight: 1.5,
                   }}
                 >
-                  <Popup>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, minWidth: 180 }}>
-                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{obs.householdId}</div>
-                      <div style={{ color: '#475569', marginBottom: 2 }}>
-                        <strong>Test:</strong> {testTypeLabel(obs.testType)}
+                  <Popup className="font-sans">
+                    <div className="min-w-[180px]">
+                      <div className="font-bold text-sm mb-1 text-nw-text flex items-center justify-between">
+                        {obs.householdId}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${isFail ? 'bg-nw-fail-bg text-nw-fail' : 'bg-nw-pass-bg text-nw-pass'}`}>
+                          {isFail ? 'Elevated' : 'Normal'}
+                        </span>
                       </div>
-                      <div style={{ color: '#475569', marginBottom: 2 }}>
-                        <strong>Result:</strong> {obs.result} {testTypeUnit(obs.testType)}
+                      
+                      <div className="bg-nw-surface-2 rounded p-2 mb-2">
+                        <div className="text-xs flex justify-between mb-1">
+                          <span className="text-nw-text-muted font-medium">Parameter</span>
+                          <span className="font-semibold">{testTypeLabel(obs.testType)}</span>
+                        </div>
+                        <div className="text-xs flex justify-between mb-1">
+                          <span className="text-nw-text-muted font-medium">Result</span>
+                          <span className="font-bold text-nw-text">{obs.result} <span className="text-[10px] text-nw-text-faint">{testTypeUnit(obs.testType)}</span></span>
+                        </div>
+                        <div className="text-xs flex justify-between">
+                          <span className="text-nw-text-muted font-medium">Ward</span>
+                          <span className="font-medium">{obs.wardId}</span>
+                        </div>
                       </div>
-                      <div style={{ color: '#475569', marginBottom: 2 }}>
-                        <strong>Ward:</strong> {obs.wardId}
-                      </div>
-                      <div style={{ color: '#94A3B8', fontSize: 11 }}>
-                        {formatDateTime(obs.testedAt)}
-                      </div>
-                      <div style={{
-                        marginTop: 6,
-                        padding: '3px 7px',
-                        borderRadius: 3,
-                        background: isFail ? '#FEE2E2' : '#DCFCE7',
-                        color: isFail ? '#B91C1C' : '#15803D',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        display: 'inline-block',
-                      }}>
-                        {isFail ? 'Elevated result' : 'Within range'}
-                      </div>
-                      <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>
-                        Synthetic demonstration data
+
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-nw-border-2">
+                        <div className="text-[10px] text-nw-text-muted flex items-center gap-1">
+                          <Info size={10} /> Synthetic Data
+                        </div>
+                        <div className="text-[10px] text-nw-text-muted">
+                          {formatDateTime(obs.testedAt)}
+                        </div>
                       </div>
                     </div>
                   </Popup>
@@ -170,18 +235,11 @@ export function MapPage() {
 
 function LegendItem({ color, label, circle }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--nw-text-muted)' }}>
+    <div className="flex items-center gap-1.5 text-[11px] font-medium text-nw-text-muted">
       {circle ? (
-        <span style={{
-          width: 14, height: 14, borderRadius: '50%',
-          border: `2px dashed ${color}`,
-          display: 'inline-block',
-        }} />
+        <span className="w-3.5 h-3.5 rounded-full border-2 border-dashed block" style={{ borderColor: color }} />
       ) : (
-        <span style={{
-          width: 10, height: 10, borderRadius: '50%',
-          background: color, display: 'inline-block',
-        }} />
+        <span className="w-2.5 h-2.5 rounded-full block" style={{ background: color }} />
       )}
       {label}
     </div>

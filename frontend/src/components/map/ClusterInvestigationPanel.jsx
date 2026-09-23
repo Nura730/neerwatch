@@ -1,12 +1,9 @@
+import React from 'react';
 import { formatDateTime, formatMetres, formatRate, testTypeLabel } from '../../utils/format.js';
 import { StatusBadge } from '../ui/StatusBadge.jsx';
+import { ClusterEvidence } from '../ui/ClusterEvidence.jsx';
 import { X, MapPin, Clock, Activity, CloudRain } from 'lucide-react';
 
-/**
- * ClusterInvestigationPanel — right-side panel opened when a cluster is clicked.
- * Displays all contract fields. Never navigates away.
- * Uses "Possible contamination cluster" — never "Confirmed".
- */
 export function ClusterInvestigationPanel({ cluster, rainfallData, onClose }) {
   if (!cluster) return null;
 
@@ -16,116 +13,76 @@ export function ClusterInvestigationPanel({ cluster, rainfallData, onClose }) {
   const totalRainfall = wardRainfall.reduce((sum, r) => sum + r.rainfallMm, 0);
 
   return (
-    <aside className="cluster-panel" aria-label="Cluster investigation panel">
+    <aside className="w-[380px] shrink-0 bg-nw-surface border-l border-nw-border flex flex-col overflow-y-auto shadow-[-4px_0_15px_rgba(0,0,0,0.05)] z-[1000] relative" aria-label="Cluster investigation panel">
       {/* Header */}
-      <div style={{
-        padding: '14px 16px',
-        borderBottom: '1px solid var(--nw-border)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
-        gap: 8,
-      }}>
+      <div className="px-5 py-4 border-b border-nw-border bg-nw-surface-2 flex items-start justify-between sticky top-0 z-10">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div className="flex items-center gap-2 mb-1">
             <StatusBadge label="Possible Cluster" variant="cluster" />
             {cluster.active && <StatusBadge label="Active" variant="active" />}
           </div>
-          <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--nw-text)' }}>
+          <div className="font-bold text-base text-nw-text">
             {testTypeLabel(cluster.testType)} — {cluster.wardId}
           </div>
         </div>
         <button
           onClick={onClose}
-          className="nw-btn nw-btn-secondary nw-btn-sm"
+          className="p-1.5 -mr-1.5 rounded-md text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-3 transition-colors"
           aria-label="Close investigation panel"
-          style={{ padding: '4px 8px', flexShrink: 0 }}
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       </div>
 
-      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="p-5 flex flex-col gap-6">
+        
+        {/* Evidence Component (Reused) */}
+        <ClusterEvidence cluster={cluster} />
 
-        {/* Why flagged */}
+        {/* Detailed Window */}
         <section>
-          <div className="nw-label" style={{ marginBottom: 8 }}>Why This Was Flagged</div>
-          <div style={{
-            background: 'var(--nw-cluster-bg)',
-            border: '1px solid #FECACA',
-            borderRadius: 5,
-            padding: '10px 12px',
-            fontSize: '0.875rem',
-            color: 'var(--nw-cluster)',
-            lineHeight: 1.5,
-          }}>
-            <strong>{cluster.observationCount}</strong> positive {testTypeLabel(cluster.testType)} observations
-            {' '}within approximately <strong>{formatMetres(cluster.radiusMetres)}</strong>
-            {' '}over the observation window.
-            Failure rate: <strong>{formatRate(cluster.failureRate)}</strong>.
-          </div>
-        </section>
-
-        {/* Evidence */}
-        <section>
-          <div className="nw-label" style={{ marginBottom: 8 }}>Detection Details</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <DetailRow icon={<Activity size={13} />} label="Test type"
-              value={testTypeLabel(cluster.testType)} />
-            <DetailRow icon={<MapPin size={13} />} label="Approximate centre"
-              value={`${cluster.centroid.lat.toFixed(4)}°N, ${cluster.centroid.lng.toFixed(4)}°E`} />
-            <DetailRow icon={<MapPin size={13} />} label="Radius"
-              value={formatMetres(cluster.radiusMetres)} />
-            <DetailRow icon={<Activity size={13} />} label="Observations in window"
-              value={cluster.observationCount} />
-            <DetailRow icon={<Activity size={13} />} label="Failure rate"
-              value={formatRate(cluster.failureRate)} />
-          </div>
-        </section>
-
-        {/* Time window */}
-        <section>
-          <div className="nw-label" style={{ marginBottom: 8 }}>Observation Window</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <DetailRow icon={<Clock size={13} />} label="Window start"
+          <div className="nw-label mb-3">Observation Window</div>
+          <div className="flex flex-col gap-2 bg-nw-surface-2 p-3 rounded-md border border-nw-border-2">
+            <DetailRow icon={<Clock size={14} />} label="Window start"
               value={formatDateTime(cluster.windowStart)} />
-            <DetailRow icon={<Clock size={13} />} label="Window end"
+            <DetailRow icon={<Clock size={14} />} label="Window end"
               value={formatDateTime(cluster.windowEnd)} />
-            <DetailRow icon={<Clock size={13} />} label="Detected at"
+            <DetailRow icon={<Clock size={14} />} label="Detected at"
               value={formatDateTime(cluster.detectedAt)} />
+          </div>
+        </section>
+
+        {/* Technical Details */}
+        <section>
+          <div className="nw-label mb-3">Detection Technical Details</div>
+          <div className="flex flex-col gap-2 bg-nw-surface-2 p-3 rounded-md border border-nw-border-2">
+            <DetailRow icon={<Activity size={14} />} label="Test parameter"
+              value={testTypeLabel(cluster.testType)} />
+            <DetailRow icon={<MapPin size={14} />} label="Approximate centre"
+              value={`${cluster.centroid.lat.toFixed(4)}°N, ${cluster.centroid.lng.toFixed(4)}°E`} />
+            <DetailRow icon={<Activity size={14} />} label="Observation failure rate"
+              value={formatRate(cluster.failureRate)} />
           </div>
         </section>
 
         {/* Rainfall context */}
         {wardRainfall.length > 0 && (
-          <section>
-            <div className="nw-label" style={{ marginBottom: 8 }}>Rainfall Context</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--nw-text-2)' }}>
-              <CloudRain size={13} color="var(--nw-navy)" />
-              <span>{totalRainfall.toFixed(1)} mm over the observation window ({wardRainfall.length} days)</span>
+          <section className="bg-blue-50 border border-blue-100 rounded-md p-4">
+            <div className="nw-label text-[#0369A1] mb-2">Rainfall Context</div>
+            <div className="flex items-center gap-2 text-sm font-medium text-[#0369A1]">
+              <CloudRain size={16} />
+              <span>{totalRainfall.toFixed(1)} mm over {wardRainfall.length} days</span>
             </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)', margin: '6px 0 0', lineHeight: 1.5 }}>
+            <p className="text-xs text-[#0369A1]/80 mt-2 leading-relaxed">
               Rainfall data is shown as environmental context only. The relationship between
               rainfall and water quality requires investigation.
             </p>
           </section>
         )}
 
-        {/* Detection rule note */}
-        <section>
-          <div className="nw-label" style={{ marginBottom: 8 }}>Detection Rule</div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--nw-text-muted)', margin: 0, lineHeight: 1.5 }}>
-            This cluster was identified by the backend&apos;s deterministic
-            detection rule: a configured minimum number of positive observations
-            within a configured spatial radius and time window.
-            Exact parameters are defined by the backend configuration.
-          </p>
-        </section>
-
         {/* Disclaimer */}
-        <div className="synthetic-banner">
-          Possible contamination cluster detected — not confirmed.
-          Field investigation is required to verify this finding.
+        <div className="bg-nw-warn-bg border border-nw-warn/20 text-nw-warn text-xs font-medium p-3 rounded-md text-center shadow-sm">
+          Possible contamination cluster detected — not confirmed. Field investigation is required.
         </div>
 
       </div>
@@ -135,12 +92,12 @@ export function ClusterInvestigationPanel({ cluster, rainfallData, onClose }) {
 
 function DetailRow({ icon, label, value }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: 'var(--nw-text-muted)' }}>
+    <div className="flex justify-between items-center gap-2 py-1">
+      <span className="flex items-center gap-1.5 text-xs text-nw-text-muted">
         {icon}
         {label}
       </span>
-      <span style={{ fontSize: '0.8125rem', color: 'var(--nw-text-2)', fontWeight: 500 }}>
+      <span className="text-xs text-nw-text-2 font-medium">
         {value}
       </span>
     </div>
