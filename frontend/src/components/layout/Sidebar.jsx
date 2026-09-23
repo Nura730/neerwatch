@@ -11,11 +11,10 @@ import {
   RefreshCw,
   Users,
   ClipboardCheck,
-  TrendingUp,
-  LogIn,
+  BarChart2,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { canCreateTest, canSyncTests, canManageUsers, canViewFieldWork } from '../../auth/permissions.js';
+import { canCreateTest, canSyncTests, canManageUsers, canManageFieldTasks } from '../../auth/permissions.js';
 
 const OBSERVATION_ITEMS = [
   { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,8 +33,8 @@ function NavItem({ to, icon: Icon, label, badge, end = false }) {
       end={end}
       className={({ isActive }) => `
         flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors border-l-2
-        ${isActive 
-          ? 'border-[#38BDF8] text-[#38BDF8] bg-[#38BDF8]/10' 
+        ${isActive
+          ? 'border-[#38BDF8] text-[#38BDF8] bg-[#38BDF8]/10'
           : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
         }
       `}
@@ -50,8 +49,8 @@ function NavItem({ to, icon: Icon, label, badge, end = false }) {
 export function Sidebar({ pendingCount }) {
   const { user } = useAuth();
   const role = user ? user.role : null;
-  const showOperations = role && (canCreateTest(role) || canSyncTests(role));
-  const showAdmin = role && canManageUsers(role);
+  const showOperations = role && (canCreateTest(role) || canSyncTests(role) || canManageFieldTasks(role));
+  const showAdmin      = role && canManageUsers(role);
 
   return (
     <nav className="w-[240px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-slate-300" aria-label="Main navigation">
@@ -82,10 +81,10 @@ export function Sidebar({ pendingCount }) {
               <NavItem to="/observations/new" icon={Plus} label="Create Test" />
             )}
             {canSyncTests(role) && (
-              <NavItem 
-                to="/sync" 
-                icon={RefreshCw} 
-                label="Sync Center" 
+              <NavItem
+                to="/sync"
+                icon={RefreshCw}
+                label="Sync Center"
                 badge={pendingCount > 0 ? (
                   <span className="ml-auto bg-[#D97706] text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
                     {pendingCount}
@@ -93,6 +92,19 @@ export function Sidebar({ pendingCount }) {
                 ) : null}
               />
             )}
+            {canManageFieldTasks(role) && (
+              <NavItem to="/field-work" icon={ClipboardCheck} label="Field Work" />
+            )}
+          </div>
+        )}
+
+        {/* Insights — analytics visible to all authenticated users */}
+        {role && (
+          <div>
+            <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Insights
+            </h3>
+            <NavItem to="/analytics" icon={BarChart2} label="Analytics" />
           </div>
         )}
 
@@ -104,36 +116,10 @@ export function Sidebar({ pendingCount }) {
             <NavItem to="/users" icon={Users} label="User Management" />
           </div>
         )}
-
-        {/* Field Work — only for operator/admin */}
-        {canViewFieldWork(role) && (
-          <div>
-            <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Field
-            </h3>
-            <NavItem to="/field-work" icon={ClipboardCheck} label="Field Work" />
-          </div>
-        )}
-
-        {/* Analytics — available to all */}
-        <div>
-          <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Insights
-          </h3>
-          <NavItem to="/analytics" icon={TrendingUp} label="Analytics" />
-        </div>
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500 space-y-3">
-        {!user && (
-          <NavLink
-            to="/login"
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm font-medium transition-colors"
-          >
-            <LogIn size={15} /> Sign In for Operations
-          </NavLink>
-        )}
+      <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500">
         <p>Ernakulam / Kochi · Demo</p>
       </div>
     </nav>

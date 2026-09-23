@@ -38,7 +38,7 @@ import { authService } from '../auth/authService.js';
  */
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  
+
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   const token = authService.getToken();
   if (token) {
@@ -67,7 +67,6 @@ async function apiFetch(path, options = {}) {
 
   if (!body.success) {
     const msg = body.message || `Request failed with HTTP ${response.status}`;
-    // Optionally handle 403 differently if needed, but throwing Error is fine
     throw new Error(msg);
   }
 
@@ -123,7 +122,6 @@ export async function getTests(params = {}) {
 export async function createTest(body) {
   if (USE_MOCK) {
     await mockDelay(200);
-    // Return the observation echoed back with a server timestamp
     return { ...body, createdAt: new Date().toISOString() };
   }
   return apiFetch('/api/tests', {
@@ -249,9 +247,13 @@ export async function getWards() {
 /**
  * GET /api/field-tasks
  * List field investigation tasks.
- * @param {{ status?, wardId?, priority?, page?, limit? }} params
+ * @param {{ status?, wardId?, priority?, assignedTo?, page?, limit? }} params
  */
 export async function getFieldTasks(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { tasks: [] };
+  }
   return apiFetch(`/api/field-tasks${buildQuery(params)}`);
 }
 
@@ -260,68 +262,75 @@ export async function getFieldTasks(params = {}) {
  * Get a single field task by ID.
  */
 export async function getFieldTask(id) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { task: null };
+  }
   return apiFetch(`/api/field-tasks/${id}`);
 }
 
 /**
  * POST /api/field-tasks
  * Create a new field task.
- * @param {Object} body
+ * @param {{ title, wardId, description?, location?, priority?, dueAt?, sourceObservationId?, assignedTo? }} body
  */
 export async function createFieldTask(body) {
-  return apiFetch('/api/field-tasks', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  if (USE_MOCK) {
+    await mockDelay(300);
+    throw new Error('Field task creation requires a live backend connection.');
+  }
+  return apiFetch('/api/field-tasks', { method: 'POST', body: JSON.stringify(body) });
 }
 
 /**
  * PATCH /api/field-tasks/:id
- * Update a field task (general update).
+ * Updates title/description/wardId/location/priority/dueAt (NOT status or assignedTo).
  * @param {string} id
  * @param {Object} body
  */
 export async function updateFieldTask(id, body) {
-  return apiFetch(`/api/field-tasks/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Field task updates require a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 /**
  * PATCH /api/field-tasks/:id/assign
- * Assign a field task to an operator.
- * @param {string} id
- * @param {{ operatorId: string }} body
+ * @param {{ assignedTo: string|null }} body — null to unassign
  */
 export async function assignFieldTask(id, body) {
-  return apiFetch(`/api/field-tasks/${id}/assign`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Task assignment requires a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}/assign`, { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 /**
  * PATCH /api/field-tasks/:id/status
- * Update the status of a field task.
- * @param {string} id
- * @param {{ status: string }} body
+ * @param {{ status: 'pending'|'assigned'|'in_progress'|'completed'|'cancelled' }} body
  */
 export async function updateFieldTaskStatus(id, body) {
-  return apiFetch(`/api/field-tasks/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  });
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Status updates require a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify(body) });
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 /**
  * GET /api/analytics/contamination-trend
- * Time-series contamination analytics.
- * @param {{ period?, wardId?, testType?, from?, to? }} params
+ * Time-series contamination analytics. Requires authentication.
+ * @param {{ wardId?, testType?, from?, to?, interval?: 'day'|'week'|'month' }} params
  */
 export async function getContaminationTrend(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { wardId: null, testType: null, interval: params.interval || 'day', series: [] };
+  }
   return apiFetch(`/api/analytics/contamination-trend${buildQuery(params)}`);
 }
-

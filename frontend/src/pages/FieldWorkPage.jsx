@@ -1,400 +1,462 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useApiData } from '../hooks/useApiData.js';
 import {
-  ClipboardCheck,
-  Plus,
+  getFieldTasks,
+  getWards,
+  assignFieldTask,
+  updateFieldTaskStatus,
+} from '../services/api.js';
+import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/ui/States.jsx';
+import { StatusBadge } from '../components/ui/StatusBadge.jsx';
+import { FilterBar } from '../components/ui/FilterBar.jsx';
+import { DataTable } from '../components/ui/DataTable.jsx';
+import { CreateFieldTaskModal } from '../components/ui/CreateFieldTaskModal.jsx';
+import { formatDateTime, formatDate } from '../utils/format.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { canManageFieldTasks } from '../auth/permissions.js';
+import {
   RefreshCw,
+  Plus,
+  X,
   MapPin,
   Calendar,
   User,
-  AlertTriangle,
-  ChevronRight,
-  X,
-  CheckCircle2,
-  Clock,
-  CircleDot,
-  Ban,
-  Construction,
+  ClipboardList,
+  CheckCircle,
+  XCircle,
+  PlayCircle,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
-import { useApiData } from '../hooks/useApiData.js';
-import { getFieldTasks, createFieldTask, assignFieldTask, updateFieldTaskStatus } from '../services/api.js';
-import { getWards } from '../services/api.js';
-import { PageHeader, LoadingState, EmptyState } from '../components/ui/States.jsx';
-import { StatusBadge } from '../components/ui/StatusBadge.jsx';
-import { formatDateTime } from '../utils/format.js';
-import { useAuth } from '../auth/AuthContext.jsx';
-import { canCreateFieldTask, canAssignFieldTask, canUpdateFieldTaskStatus } from '../auth/permissions.js';
 
-// ── Status config ─────────────────────────────────────────────────────────────
+const STATUSES = [
+  { value: '',            label: 'All' },
+  { value: 'pending',     label: 'Pending' },
+  { value: 'assigned',    label: 'Assigned' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'completed',   label: 'Completed' },
+  { value: 'cancelled',   label: 'Cancelled' },
+];
 
-const STATUS_CONFIG = {
-  pending:     { label: 'Pending',     variant: 'neutral', icon: Clock },
-  assigned:    { label: 'Assigned',    variant: 'warn',    icon: User },
-  in_progress: { label: 'In Progress', variant: 'warn',    icon: CircleDot },
-  completed:   { label: 'Completed',   variant: 'pass',    icon: CheckCircle2 },
-  cancelled:   { label: 'Cancelled',   variant: 'neutral', icon: Ban },
+const PRIORITIES = [
+  { value: '',         label: 'All priorities' },
+  { value: 'low',      label: 'Low' },
+  { value: 'medium',   label: 'Medium' },
+  { value: 'high',     label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
+const PRIORITY_VARIANT = {
+  low:      'neutral',
+  medium:   'navy',
+  high:     'warn',
+  critical: 'fail',
 };
 
-const PRIORITY_CONFIG = {
-  high:   { label: 'High',   className: 'bg-red-50 text-red-700 border border-red-200' },
-  medium: { label: 'Medium', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  low:    { label: 'Low',    className: 'bg-slate-50 text-slate-600 border border-slate-200' },
+const STATUS_VARIANT = {
+  pending:     'neutral',
+  assigned:    'navy',
+  in_progress: 'warn',
+  completed:   'pass',
+  cancelled:   'neutral',
 };
 
-const STATUS_TABS = ['all', 'pending', 'assigned', 'in_progress', 'completed', 'cancelled'];
+const STATUS_LABEL = {
+  pending:     'Pending',
+  assigned:    'Assigned',
+  in_progress: 'In Progress',
+  completed:   'Completed',
+  cancelled:   'Cancelled',
+};
 
-// ── Components ────────────────────────────────────────────────────────────────
+// Backend-defined valid transitions — mirrored here for UX only (backend validates)
+const VALID_TRANSITIONS = {
+  pending:     ['in_progress', 'cancelled'],
+  assigned:    ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed:   [],
+  cancelled:   [],
+};
 
-function PriorityBadge({ priority }) {
-  const cfg = PRIORITY_CONFIG[priority?.toLowerCase()] || PRIORITY_CONFIG.low;
-  return (
-    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wide ${cfg.className}`}>
-      {cfg.label || priority}
-    </span>
-  );
-}
+const TRANSITION_LABELS = {
+  in_progress: 'Start Investigation',
+  completed:   'Mark Completed',
+  cancelled:   'Cancel Task',
+  pending:     'Revert to Pending',
+};
 
-function TaskCard({ task, onClick }) {
-  const StatusIcon = STATUS_CONFIG[task.status]?.icon || Clock;
-  const statusCfg = STATUS_CONFIG[task.status] || { label: task.status, variant: 'neutral' };
+const TRANSITION_VARIANT = {
+  in_progress: 'nw-btn-primary',
+  completed:   'nw-btn-primary',
+  cancelled:   'nw-btn-danger',
+  pending:     'nw-btn-secondary',
+};
 
-  return (
-    <button
-      onClick={() => onClick(task)}
-      className="w-full text-left bg-nw-surface border border-nw-border rounded-lg p-4 hover:border-nw-navy hover:shadow-sm transition-all group"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {task.priority && <PriorityBadge priority={task.priority} />}
-            <StatusBadge label={statusCfg.label} variant={statusCfg.variant} />
-          </div>
-          <p className="font-semibold text-nw-text text-sm leading-snug truncate">{task.title || `Task ${task.id}`}</p>
-          {task.description && (
-            <p className="text-xs text-nw-text-muted mt-1 line-clamp-2">{task.description}</p>
-          )}
-          <div className="flex flex-wrap items-center gap-3 mt-2">
-            {task.wardId && (
-              <span className="flex items-center gap-1 text-xs text-nw-text-muted">
-                <MapPin size={11} /> Ward {task.wardId}
-              </span>
-            )}
-            {task.dueDate && (
-              <span className="flex items-center gap-1 text-xs text-nw-text-muted">
-                <Calendar size={11} /> {formatDateTime(task.dueDate)}
-              </span>
-            )}
-            {task.assignedTo && (
-              <span className="flex items-center gap-1 text-xs text-nw-text-muted">
-                <User size={11} /> {task.assignedTo}
-              </span>
-            )}
-          </div>
-        </div>
-        <ChevronRight size={16} className="text-nw-text-faint group-hover:text-nw-navy mt-1 shrink-0 transition-colors" />
-      </div>
-    </button>
-  );
-}
+// ─── Task Detail Drawer ──────────────────────────────────────────────────────
 
-function TaskDetailDrawer({ task, onClose, onStatusUpdated, canAssign, canUpdateStatus }) {
-  const [updating, setUpdating] = useState(false);
-  const [updateError, setUpdateError] = useState('');
-  const statusCfg = STATUS_CONFIG[task.status] || { label: task.status, variant: 'neutral' };
-  const StatusIcon = statusCfg.icon || Clock;
+function FieldTaskDrawer({ task, onClose, onTaskUpdated, canManage }) {
+  const [actionBusy, setActionBusy] = useState(null);
+  const [assignInput, setAssignInput] = useState('');
+  const [showAssignForm, setShowAssignForm] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
-  const nextStatus = {
-    pending:     'assigned',
-    assigned:    'in_progress',
-    in_progress: 'completed',
-  }[task.status];
+  useEffect(() => {
+    const handleEscape = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
-  const nextStatusLabel = {
-    assigned:    'Start Investigation',
-    in_progress: 'Mark Completed',
-  }[nextStatus];
+  if (!task) return null;
 
-  async function handleStatusUpdate(newStatus) {
+  const isTerminal = task.status === 'completed' || task.status === 'cancelled';
+
+  const handleStatusChange = async (newStatus) => {
+    setActionError(null);
+    setActionBusy(newStatus);
     try {
-      setUpdating(true);
-      setUpdateError('');
-      await updateFieldTaskStatus(task.id, { status: newStatus });
-      onStatusUpdated();
-      onClose();
+      const data = await updateFieldTaskStatus(task.id, { status: newStatus });
+      onTaskUpdated(data.task);
     } catch (err) {
-      setUpdateError(err.message || 'Failed to update status.');
+      setActionError(err.message || 'Action failed.');
     } finally {
-      setUpdating(false);
+      setActionBusy(null);
     }
-  }
+  };
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    setActionError(null);
+    setActionBusy('assign');
+    try {
+      const data = await assignFieldTask(task.id, { assignedTo: assignInput.trim() || null });
+      onTaskUpdated(data.task);
+      setShowAssignForm(false);
+      setAssignInput('');
+    } catch (err) {
+      setActionError(err.message || 'Assignment failed.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const handleUnassign = async () => {
+    setActionError(null);
+    setActionBusy('unassign');
+    try {
+      const data = await assignFieldTask(task.id, { assignedTo: null });
+      onTaskUpdated(data.task);
+    } catch (err) {
+      setActionError(err.message || 'Unassign failed.');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const transitions = VALID_TRANSITIONS[task.status] || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" aria-modal="true">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-nw-surface border-l border-nw-border shadow-xl flex flex-col overflow-y-auto">
+    <>
+      <div
+        className="fixed inset-0 bg-black/20 z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-drawer-title"
+        className="fixed inset-y-0 right-0 w-full max-w-md bg-nw-surface shadow-2xl z-50 flex flex-col border-l border-nw-border"
+      >
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-nw-border">
-          <div>
-            <h2 className="font-bold text-nw-text text-base">{task.title || `Task ${task.id}`}</h2>
-            <p className="text-xs text-nw-text-muted mt-0.5">Field Investigation Task</p>
-          </div>
-          <button onClick={onClose} className="text-nw-text-muted hover:text-nw-text p-1 rounded" aria-label="Close">
-            <X size={18} />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-nw-border bg-nw-surface-2">
+          <h2 id="task-drawer-title" className="text-base font-bold text-nw-text">Field Task</h2>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 rounded text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-3 transition-colors"
+            aria-label="Close task details"
+          >
+            <X size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 p-6 space-y-6">
-          {/* Status + Priority */}
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge label={statusCfg.label} variant={statusCfg.variant} />
-            {task.priority && <PriorityBadge priority={task.priority} />}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Title + badges */}
+          <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <StatusBadge label={STATUS_LABEL[task.status] || task.status} variant={STATUS_VARIANT[task.status] || 'neutral'} />
+              <StatusBadge label={(task.priority || 'medium').toUpperCase()} variant={PRIORITY_VARIANT[task.priority] || 'neutral'} />
+            </div>
+            <h3 className="text-lg font-bold text-nw-text leading-snug">{task.title}</h3>
           </div>
 
+          {/* Description */}
           {task.description && (
             <div>
-              <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Description</p>
-              <p className="text-sm text-nw-text">{task.description}</p>
+              <p className="nw-label mb-1">Description</p>
+              <p className="text-sm text-nw-text-2 bg-nw-surface-2 rounded p-3 border border-nw-border whitespace-pre-wrap">{task.description}</p>
             </div>
           )}
 
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-4">
-            {task.wardId && (
-              <div>
-                <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Ward</p>
-                <p className="text-sm text-nw-text font-medium">Ward {task.wardId}</p>
+          {/* Details */}
+          <div className="space-y-0">
+            <p className="nw-label mb-2">Details</p>
+            <div className="bg-nw-surface-2 rounded border border-nw-border divide-y divide-nw-border text-sm">
+              <div className="flex justify-between px-3 py-2.5">
+                <span className="text-nw-text-muted">Ward</span>
+                <span className="font-medium text-nw-text">{task.wardId || '—'}</span>
               </div>
-            )}
-            {task.assignedTo && (
-              <div>
-                <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Assigned To</p>
-                <p className="text-sm text-nw-text font-medium">{task.assignedTo}</p>
+              {task.location && (
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-nw-text-muted flex items-center gap-1"><MapPin size={12} /> Location</span>
+                  <span className="font-mono text-xs text-nw-text">{task.location.lat.toFixed(4)}, {task.location.lng.toFixed(4)}</span>
+                </div>
+              )}
+              <div className="flex justify-between px-3 py-2.5">
+                <span className="text-nw-text-muted flex items-center gap-1"><User size={12} /> Assigned To</span>
+                <span className="font-medium text-nw-text">{task.assignedTo || <span className="text-nw-text-faint italic">Unassigned</span>}</span>
               </div>
-            )}
-            {task.dueDate && (
-              <div>
-                <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Due Date</p>
-                <p className="text-sm text-nw-text font-medium">{formatDateTime(task.dueDate)}</p>
+              {task.dueAt && (
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-nw-text-muted flex items-center gap-1"><Calendar size={12} /> Due Date</span>
+                  <span className="font-medium text-nw-text">{formatDate(task.dueAt)}</span>
+                </div>
+              )}
+              {task.completedAt && (
+                <div className="flex justify-between px-3 py-2.5">
+                  <span className="text-nw-text-muted">Completed</span>
+                  <span className="font-medium text-nw-pass">{formatDateTime(task.completedAt)}</span>
+                </div>
+              )}
+              {task.sourceObservationId && (
+                <div className="flex justify-between items-center px-3 py-2.5">
+                  <span className="text-nw-text-muted">Linked Observation</span>
+                  <Link
+                    to="/observations"
+                    className="text-nw-teal text-xs hover:underline flex items-center gap-1 font-mono"
+                  >
+                    {task.sourceObservationId.slice(-8)} <ExternalLink size={11} />
+                  </Link>
+                </div>
+              )}
+              <div className="flex justify-between px-3 py-2.5">
+                <span className="text-nw-text-muted">Created</span>
+                <span className="text-nw-text-muted text-xs">{formatDateTime(task.createdAt)}</span>
               </div>
-            )}
-            {task.createdAt && (
-              <div>
-                <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Created</p>
-                <p className="text-sm text-nw-text font-medium">{formatDateTime(task.createdAt)}</p>
+              <div className="flex justify-between px-3 py-2.5">
+                <span className="text-nw-text-muted">Updated</span>
+                <span className="text-nw-text-muted text-xs">{formatDateTime(task.updatedAt)}</span>
               </div>
-            )}
+            </div>
           </div>
-
-          {/* Location */}
-          {task.location && (
-            <div>
-              <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Location</p>
-              <p className="text-sm font-mono text-nw-text">
-                {task.location.lat?.toFixed(5)}, {task.location.lng?.toFixed(5)}
-              </p>
-            </div>
-          )}
-
-          {/* Related items */}
-          {task.alertId && (
-            <div>
-              <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Related Alert</p>
-              <p className="text-sm font-mono text-nw-text-muted">{task.alertId}</p>
-            </div>
-          )}
-          {task.clusterId && (
-            <div>
-              <p className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Related Cluster</p>
-              <p className="text-sm font-mono text-nw-text-muted">{task.clusterId}</p>
-            </div>
-          )}
-
-          {/* Error */}
-          {updateError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex gap-2">
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-              {updateError}
-            </div>
-          )}
         </div>
 
-        {/* Actions */}
-        {canUpdateStatus && nextStatus && nextStatusLabel && (
-          <div className="p-6 border-t border-nw-border">
-            <button
-              onClick={() => handleStatusUpdate(nextStatus)}
-              disabled={updating}
-              className="w-full nw-btn nw-btn-primary justify-center disabled:opacity-60"
-            >
-              {updating ? 'Updating…' : nextStatusLabel}
-            </button>
+        {/* Actions footer */}
+        {canManage && !isTerminal && (
+          <div className="border-t border-nw-border px-6 py-4 bg-nw-surface-2 space-y-3">
+            {actionError && (
+              <div className="bg-nw-fail-bg text-nw-fail text-xs rounded px-3 py-2 border border-nw-fail/20">
+                {actionError}
+              </div>
+            )}
+
+            {/* Assignment */}
+            {!showAssignForm ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="nw-btn nw-btn-secondary nw-btn-sm flex-1"
+                  onClick={() => { setShowAssignForm(true); setAssignInput(task.assignedTo || ''); }}
+                  disabled={!!actionBusy}
+                >
+                  <User size={13} /> {task.assignedTo ? 'Reassign' : 'Assign'}
+                </button>
+                {task.assignedTo && (
+                  <button
+                    type="button"
+                    className="nw-btn nw-btn-secondary nw-btn-sm"
+                    onClick={handleUnassign}
+                    disabled={!!actionBusy}
+                  >
+                    {actionBusy === 'unassign' ? <Loader2 size={13} className="animate-spin" /> : 'Unassign'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleAssign} className="flex gap-2">
+                <input
+                  type="text"
+                  className="nw-input text-sm py-1.5 flex-1"
+                  value={assignInput}
+                  onChange={e => setAssignInput(e.target.value)}
+                  placeholder="Operator name or email"
+                  autoFocus
+                />
+                <button type="submit" className="nw-btn nw-btn-primary nw-btn-sm" disabled={!!actionBusy}>
+                  {actionBusy === 'assign' ? <Loader2 size={13} className="animate-spin" /> : 'Save'}
+                </button>
+                <button type="button" className="nw-btn nw-btn-secondary nw-btn-sm" onClick={() => setShowAssignForm(false)}>
+                  Cancel
+                </button>
+              </form>
+            )}
+
+            {/* Status transitions */}
+            {transitions.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {transitions.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`nw-btn nw-btn-sm ${TRANSITION_VARIANT[t] || 'nw-btn-secondary'}`}
+                    onClick={() => handleStatusChange(t)}
+                    disabled={!!actionBusy}
+                  >
+                    {actionBusy === t ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : t === 'completed' ? (
+                      <CheckCircle size={13} />
+                    ) : t === 'cancelled' ? (
+                      <XCircle size={13} />
+                    ) : (
+                      <PlayCircle size={13} />
+                    )}
+                    {TRANSITION_LABELS[t] || t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
-function CreateTaskForm({ wards, onCreated, onClose }) {
-  const [form, setForm] = useState({ title: '', description: '', wardId: '', priority: 'medium', dueDate: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.title.trim()) { setError('Title is required.'); return; }
-    try {
-      setSubmitting(true);
-      setError('');
-      const body = { title: form.title.trim() };
-      if (form.description) body.description = form.description.trim();
-      if (form.wardId)      body.wardId = form.wardId;
-      if (form.priority)    body.priority = form.priority;
-      if (form.dueDate)     body.dueDate = new Date(form.dueDate).toISOString();
-      await createFieldTask(body);
-      onCreated();
-    } catch (err) {
-      setError(err.message || 'Failed to create task.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" aria-modal="true">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-nw-surface border border-nw-border rounded-lg shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-nw-border">
-          <h2 className="font-bold text-nw-text">Create Field Task</h2>
-          <button onClick={onClose} className="text-nw-text-muted hover:text-nw-text p-1 rounded" aria-label="Close">
-            <X size={18} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="nw-label-text">Title <span className="text-nw-fail">*</span></label>
-            <input className="nw-input w-full mt-1" value={form.title} onChange={e => set('title', e.target.value)} placeholder="Investigation task title" required />
-          </div>
-          <div>
-            <label className="nw-label-text">Description</label>
-            <textarea className="nw-input w-full mt-1 h-20 resize-none" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Brief task description…" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="nw-label-text">Ward</label>
-              <select className="nw-input w-full mt-1" value={form.wardId} onChange={e => set('wardId', e.target.value)}>
-                <option value="">— Select ward —</option>
-                {wards.map(w => <option key={w.wardId} value={w.wardId}>{w.name || w.wardId}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="nw-label-text">Priority</label>
-              <select className="nw-input w-full mt-1" value={form.priority} onChange={e => set('priority', e.target.value)}>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="nw-label-text">Due Date</label>
-            <input type="datetime-local" className="nw-input w-full mt-1" value={form.dueDate} onChange={e => set('dueDate', e.target.value)} />
-          </div>
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex gap-2">
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" /> {error}
-            </div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="nw-btn nw-btn-secondary flex-1 justify-center">Cancel</button>
-            <button type="submit" disabled={submitting} className="nw-btn nw-btn-primary flex-1 justify-center disabled:opacity-60">
-              {submitting ? 'Creating…' : 'Create Task'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ─── FieldWorkPage ───────────────────────────────────────────────────────────
 
 export function FieldWorkPage() {
   const { user } = useAuth();
-  const role = user?.role || null;
+  const canManage = user ? canManageFieldTasks(user.role) : false;
 
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [backendUnavailable, setBackendUnavailable] = useState(false);
+  const [statusFilter,   setStatusFilter]   = useState('');
+  const [wardFilter,     setWardFilter]      = useState('');
+  const [priorityFilter, setPriorityFilter]  = useState('');
+  const [selectedTask,   setSelectedTask]    = useState(null);
+  const [showCreate,     setShowCreate]      = useState(false);
+  // Local patches: id → updated task object for optimistic UI updates without full refetch
+  const [taskPatches,    setTaskPatches]     = useState({});
 
-  const fetchTasks = useCallback(() => {
+  const fetchFn = useCallback(() => {
     const params = {};
-    if (statusFilter !== 'all') params.status = statusFilter;
+    if (statusFilter)   params.status   = statusFilter;
+    if (wardFilter)     params.wardId   = wardFilter;
+    if (priorityFilter) params.priority = priorityFilter;
     return getFieldTasks(params);
-  }, [statusFilter]);
+  }, [statusFilter, wardFilter, priorityFilter]);
 
-  const { data, loading, error, refetch } = useApiData(fetchTasks, [statusFilter]);
-  const { data: wardData } = useApiData(() => getWards(), []);
-  const wards = wardData?.wards || [];
+  const { data, loading, error, refetch } = useApiData(fetchFn, [fetchFn]);
+  const { data: wardsData }               = useApiData(getWards, []);
+  const wards = wardsData?.wards || [];
 
-  // Detect when the endpoint simply isn't deployed yet
-  const is404 = error && (error.includes('404') || error.includes('Cannot GET') || error.includes('Not Found'));
+  const tasks = useMemo(() => {
+    const base = data?.tasks || [];
+    return base.map(t => taskPatches[t.id] ? { ...t, ...taskPatches[t.id] } : t);
+  }, [data, taskPatches]);
 
-  const tasks = data?.tasks || data?.fieldTasks || [];
+  const handleTaskUpdated = (updatedTask) => {
+    setTaskPatches(prev => ({ ...prev, [updatedTask.id]: updatedTask }));
+    setSelectedTask(updatedTask);
+  };
 
-  // ── Not yet available state ──────────────────────────────────────────────
-  if (is404 || (!loading && error && !tasks.length)) {
-    return (
-      <div className="max-w-4xl mx-auto pb-10">
-        <PageHeader
-          title="Field Work"
-          description="Investigation and field response tasks"
+  const handleTaskCreated = () => {
+    setTaskPatches({});
+    refetch();
+    setShowCreate(false);
+  };
+
+  // Active filter chips
+  const activeFilters = [];
+  if (wardFilter)     activeFilters.push({ key: 'wardId',   label: 'Ward',     value: wardFilter });
+  if (priorityFilter) activeFilters.push({ key: 'priority', label: 'Priority', value: priorityFilter });
+
+  const handleRemoveFilter = (key) => {
+    if (key === 'wardId')   setWardFilter('');
+    if (key === 'priority') setPriorityFilter('');
+  };
+
+  const handleClearAll = () => {
+    setWardFilter('');
+    setPriorityFilter('');
+  };
+
+  const columns = [
+    {
+      key: 'title',
+      header: 'Task',
+      render: (t) => (
+        <span className="font-semibold text-nw-text max-w-[220px] block truncate" title={t.title}>
+          {t.title}
+        </span>
+      ),
+    },
+    {
+      key: 'wardId',
+      header: 'Ward',
+      render: (t) => <span className="text-sm text-nw-text-2">{t.wardId || '—'}</span>,
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      render: (t) => (
+        <StatusBadge
+          label={(t.priority || 'medium').charAt(0).toUpperCase() + (t.priority || 'medium').slice(1)}
+          variant={PRIORITY_VARIANT[t.priority] || 'neutral'}
+          size="xs"
         />
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
-            <Construction size={28} className="text-amber-600" />
-          </div>
-          <h3 className="font-bold text-nw-text text-lg mb-2">Field Work — Coming Soon</h3>
-          <p className="text-nw-text-muted text-sm max-w-md mb-4">
-            The field task management backend ({' '}
-            <code className="text-xs bg-slate-100 px-1.5 py-0.5 rounded font-mono">/api/field-tasks</code>
-            {' '}) has not been deployed yet. Once the backend is ready, this page will automatically display and manage field investigation tasks.
-          </p>
-          <div className="bg-slate-50 border border-nw-border rounded-lg p-5 text-left text-sm max-w-md w-full">
-            <p className="font-semibold text-nw-text mb-3">Expected workflow when live:</p>
-            <ol className="space-y-1.5 text-nw-text-muted list-decimal list-inside">
-              <li>Contamination cluster detected</li>
-              <li>Alert generated</li>
-              <li>Admin creates field investigation task</li>
-              <li>Task assigned to operator</li>
-              <li>Operator updates status from the field</li>
-              <li>Task marked as completed</li>
-            </ol>
-          </div>
-          {error && !is404 && (
-            <p className="mt-4 text-xs text-nw-text-faint font-mono bg-slate-50 px-3 py-1.5 rounded border border-nw-border">
-              {error}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (t) => (
+        <StatusBadge
+          label={STATUS_LABEL[t.status] || t.status}
+          variant={STATUS_VARIANT[t.status] || 'neutral'}
+          size="xs"
+        />
+      ),
+    },
+    {
+      key: 'assignedTo',
+      header: 'Assigned To',
+      render: (t) => (
+        <span className="text-sm text-nw-text-muted truncate max-w-[120px] block" title={t.assignedTo || ''}>
+          {t.assignedTo || <span className="italic text-nw-text-faint">Unassigned</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'dueAt',
+      header: 'Due',
+      render: (t) => (
+        <span className="text-xs text-nw-text-muted">{t.dueAt ? formatDate(t.dueAt) : '—'}</span>
+      ),
+    },
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto pb-10">
+    <div className="max-w-6xl mx-auto pb-10">
       <PageHeader
         title="Field Work"
         description="Investigation and field response tasks"
         actions={
           <div className="flex gap-2">
-            <button className="nw-btn nw-btn-secondary" onClick={refetch}>
+            <button className="nw-btn nw-btn-secondary" onClick={refetch} disabled={loading}>
               <RefreshCw size={14} /> Refresh
             </button>
-            {canCreateFieldTask(role) && (
+            {canManage && (
               <button className="nw-btn nw-btn-primary" onClick={() => setShowCreate(true)}>
                 <Plus size={14} /> Create Task
               </button>
@@ -404,60 +466,90 @@ export function FieldWorkPage() {
       />
 
       {/* Status tabs */}
-      <div className="flex flex-wrap gap-1 mb-6 border-b border-nw-border pb-0">
-        {STATUS_TABS.map(s => {
-          const cfg = STATUS_CONFIG[s];
-          const label = s === 'all' ? 'All Tasks' : (cfg?.label || s);
-          return (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                statusFilter === s
-                  ? 'border-nw-navy text-nw-navy'
-                  : 'border-transparent text-nw-text-muted hover:text-nw-text'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap gap-1 mb-4" role="tablist" aria-label="Filter by status">
+        {STATUSES.map(s => (
+          <button
+            key={s.value}
+            role="tab"
+            aria-selected={statusFilter === s.value}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors border ${
+              statusFilter === s.value
+                ? 'bg-nw-navy text-white border-nw-navy'
+                : 'bg-nw-surface text-nw-text-2 border-nw-border hover:bg-nw-surface-2'
+            }`}
+            onClick={() => setStatusFilter(s.value)}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      {loading && <LoadingState message="Loading field tasks…" />}
-
-      {!loading && !error && tasks.length === 0 && (
-        <EmptyState
-          title="No field tasks"
-          message="No tasks match the current filter."
-        />
-      )}
-
-      {!loading && tasks.length > 0 && (
-        <div className="space-y-3">
-          {tasks.map(task => (
-            <TaskCard key={task.id} task={task} onClick={setSelectedTask} />
-          ))}
+      {/* Filters */}
+      <FilterBar filters={activeFilters} onRemoveFilter={handleRemoveFilter} onClearAll={handleClearAll}>
+        <div className="flex flex-col">
+          <label className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Ward</label>
+          <select
+            className="nw-input text-sm py-1.5 min-w-[140px]"
+            value={wardFilter}
+            onChange={e => setWardFilter(e.target.value)}
+          >
+            <option value="">All wards</option>
+            {wards.map(w => <option key={w.wardId} value={w.wardId}>{w.name || w.wardId}</option>)}
+          </select>
         </div>
+
+        <div className="flex flex-col">
+          <label className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Priority</label>
+          <select
+            className="nw-input text-sm py-1.5 min-w-[140px]"
+            value={priorityFilter}
+            onChange={e => setPriorityFilter(e.target.value)}
+          >
+            {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+      </FilterBar>
+
+      {loading && <LoadingState message="Loading field tasks…" />}
+      {error && <ErrorState message={error} onRetry={refetch} />}
+
+      {!loading && !error && (
+        <DataTable
+          columns={columns}
+          data={tasks}
+          onRowClick={(t) => setSelectedTask(t)}
+          emptyState={
+            <EmptyState
+              title="No field tasks"
+              message="No field tasks match the current filters."
+              icon={<ClipboardList size={32} />}
+              action={
+                canManage && (
+                  <button className="nw-btn nw-btn-primary mt-2" onClick={() => setShowCreate(true)}>
+                    <Plus size={14} /> Create Task
+                  </button>
+                )
+              }
+            />
+          }
+        />
       )}
 
       {selectedTask && (
-        <TaskDetailDrawer
+        <FieldTaskDrawer
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
-          onStatusUpdated={refetch}
-          canAssign={canAssignFieldTask(role)}
-          canUpdateStatus={canUpdateFieldTaskStatus(role)}
+          onTaskUpdated={handleTaskUpdated}
+          canManage={canManage}
         />
       )}
 
-      {showCreate && (
-        <CreateTaskForm
-          wards={wards}
-          onCreated={() => { setShowCreate(false); refetch(); }}
-          onClose={() => setShowCreate(false)}
-        />
-      )}
+      <CreateFieldTaskModal
+        open={showCreate}
+        prefill={{}}
+        onClose={() => setShowCreate(false)}
+        onCreated={handleTaskCreated}
+      />
     </div>
   );
 }

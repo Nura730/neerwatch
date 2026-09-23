@@ -10,7 +10,6 @@ import { ObservationDetailDrawer } from '../components/ui/ObservationDetailDrawe
 import { formatDateTime, testTypeLabel, testTypeUnit, formatNumber } from '../utils/format.js';
 import { classifyResult } from '../services/mock.js';
 import { MapPin, MapPinOff, RefreshCw, Eye, Plus } from 'lucide-react';
-import { ConfidenceBadge } from '../components/ui/ConfidenceBadge.jsx';
 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -114,18 +113,26 @@ export function ObservationListPage() {
     {
       key: 'confidence',
       header: 'Confidence',
-      render: (obs) => (
-        <ConfidenceBadge
-          score={obs.confidenceScore}
-          level={obs.confidenceLevel}
-        />
-      )
+      render: (obs) => {
+        if (obs.confidenceScore === undefined || obs.confidenceScore === null) {
+          return <span className="text-xs text-nw-text-faint">—</span>;
+        }
+        const level  = (obs.confidenceLevel || '').toLowerCase();
+        const colMap = { high: 'text-nw-pass', medium: 'text-nw-warn', low: 'text-nw-fail' };
+        const col    = colMap[level] || 'text-nw-text-muted';
+        return (
+          <span className="text-xs font-semibold tabular-nums">
+            <span className={col}>{(obs.confidenceLevel || '').toUpperCase()}</span>
+            <span className="text-nw-text-faint font-normal"> · {obs.confidenceScore}</span>
+          </span>
+        );
+      }
     },
     {
       key: 'action',
       header: 'Action',
       render: (obs) => (
-        <button 
+        <button
           onClick={(e) => { e.stopPropagation(); setSelectedObs(obs); }}
           className="text-nw-navy hover:text-nw-teal p-1 rounded hover:bg-nw-surface-2 transition-colors flex items-center justify-center"
           title="View details"
@@ -155,9 +162,9 @@ export function ObservationListPage() {
         }
       />
 
-      <FilterBar 
-        filters={activeFilters} 
-        onRemoveFilter={handleRemoveFilter} 
+      <FilterBar
+        filters={activeFilters}
+        onRemoveFilter={handleRemoveFilter}
         onClearAll={handleClearAll}
       >
         <div className="flex flex-col">
@@ -224,16 +231,16 @@ export function ObservationListPage() {
 
       {loading && <LoadingState message="Loading observations…" />}
       {error && <ErrorState message={error} onRetry={refetch} />}
-      
+
       {!loading && !error && (
         <>
-          <DataTable 
-            columns={columns} 
-            data={displayObs} 
+          <DataTable
+            columns={columns}
+            data={displayObs}
             onRowClick={(obs) => setSelectedObs(obs)}
             emptyState={<EmptyState title="No observations" message="No observations match the current filters." />}
           />
-          
+
           {data && displayObs.length > 0 && (
             <div className="flex items-center justify-between text-xs text-nw-text-muted mt-3 px-1">
               <span>Showing {displayObs.length} of {formatNumber(data.total)} observations</span>
@@ -244,9 +251,9 @@ export function ObservationListPage() {
       )}
 
       {selectedObs && (
-        <ObservationDetailDrawer 
-          observation={selectedObs} 
-          onClose={() => setSelectedObs(null)} 
+        <ObservationDetailDrawer
+          observation={selectedObs}
+          onClose={() => setSelectedObs(null)}
         />
       )}
     </div>

@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
-import { X, MapPin } from 'lucide-react';
+import { X, MapPin, ShieldCheck } from 'lucide-react';
 import { StatusBadge, SyncStatusBadge } from './StatusBadge.jsx';
-import { ConfidencePanel } from './ConfidenceBadge.jsx';
 import { formatDateTime, testTypeLabel } from '../../utils/format.js';
 import { Link } from 'react-router-dom';
 
@@ -16,23 +15,18 @@ export function ObservationDetailDrawer({ observation, onClose }) {
 
   if (!observation) return null;
 
-  const isFailing = observation.result > (observation.testType === 'pH' ? 8.5 : observation.testType === 'TDS' ? 500 : observation.testType === 'turbidity' ? 4 : 0);
-  // Re-use logic or pass it. We can just use the exact logic from backend/mock if we want, or a simple check.
-  // Actually, wait, let's just use what's given. The api/mock returns failing/passing, but if not we can just show Result.
-  // Let's keep it safe and just show the raw data as requested.
-
   return (
     <>
-      <div 
-        className="fixed inset-0 bg-black/20 z-40 transition-opacity" 
+      <div
+        className="fixed inset-0 bg-black/20 z-40 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       <div className="fixed inset-y-0 right-0 w-full max-w-md bg-nw-surface shadow-2xl z-50 flex flex-col transform transition-transform border-l border-nw-border">
         <div className="flex items-center justify-between px-6 py-4 border-b border-nw-border bg-nw-surface-2">
           <h2 className="text-lg font-bold text-nw-text">Observation Details</h2>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-2 -mr-2 rounded-md text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-3 transition-colors"
             aria-label="Close details"
           >
@@ -75,17 +69,6 @@ export function ObservationDetailDrawer({ observation, onClose }) {
               </div>
             </div>
 
-            {/* Confidence Assessment — shown only if backend provides it */}
-            <div>
-              <h3 className="nw-label mb-2">Confidence Assessment</h3>
-              <ConfidencePanel
-                score={observation.confidenceScore}
-                level={observation.confidenceLevel}
-                factors={observation.confidenceFactors}
-                reasons={observation.confidenceReasons}
-              />
-            </div>
-
             <div>
               <h3 className="nw-label mb-2">Location & Time</h3>
               <div className="space-y-3 text-sm">
@@ -101,7 +84,7 @@ export function ObservationDetailDrawer({ observation, onClose }) {
                   <span className="text-nw-text-muted">Created</span>
                   <span className="font-medium">{formatDateTime(observation.createdAt || observation.testedAt)}</span>
                 </div>
-                
+
                 <div className="pt-2">
                   <span className="text-nw-text-muted block mb-1">Coordinates</span>
                   {observation.location ? (
@@ -109,7 +92,7 @@ export function ObservationDetailDrawer({ observation, onClose }) {
                       <span className="nw-mono bg-nw-surface-3 px-2 py-1 rounded text-xs">
                         {observation.location.lat.toFixed(6)}, {observation.location.lng.toFixed(6)}
                       </span>
-                      <Link 
+                      <Link
                         to={`/map?lat=${observation.location.lat}&lng=${observation.location.lng}`}
                         className="text-nw-teal hover:underline text-xs flex items-center gap-1 font-medium"
                       >
@@ -124,6 +107,57 @@ export function ObservationDetailDrawer({ observation, onClose }) {
                 </div>
               </div>
             </div>
+
+            {/* Confidence Assessment — shown only if backend provides it */}
+            {observation.confidenceScore !== undefined && observation.confidenceScore !== null ? (
+              <div>
+                <h3 className="nw-label mb-2 flex items-center gap-1.5">
+                  <ShieldCheck size={13} />
+                  Confidence Assessment
+                </h3>
+                <div className="bg-nw-surface-2 border border-nw-border rounded p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <StatusBadge
+                      label={(observation.confidenceLevel || '').toUpperCase()}
+                      variant={
+                        observation.confidenceLevel === 'high'   ? 'pass'
+                        : observation.confidenceLevel === 'medium' ? 'warn'
+                        : 'fail'
+                      }
+                    />
+                    <span className="font-mono font-bold text-xl text-nw-text">
+                      {observation.confidenceScore}
+                      <span className="text-sm font-normal text-nw-text-muted"> / 100</span>
+                    </span>
+                  </div>
+
+                  <div className="rate-bar" aria-hidden="true">
+                    <div
+                      className={`rate-bar__fill${
+                        observation.confidenceScore >= 80 ? '' :
+                        observation.confidenceScore >= 60 ? ' rate-bar__fill--warn' :
+                        ' rate-bar__fill--fail'
+                      }`}
+                      style={{ width: `${observation.confidenceScore}%` }}
+                    />
+                  </div>
+
+                  {Array.isArray(observation.confidenceReasons) && observation.confidenceReasons.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-nw-text-muted uppercase tracking-wider mb-1.5">Why</p>
+                      <ul className="space-y-1">
+                        {observation.confidenceReasons.map((r, i) => (
+                          <li key={i} className="text-xs text-nw-text-2 flex items-start gap-1.5">
+                            <span className="text-nw-teal shrink-0 mt-0.5">•</span>
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
