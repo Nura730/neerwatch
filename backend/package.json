@@ -6,19 +6,25 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --forceExit --runInBand"
+    "test": "jest --forceExit --runInBand",
+    "seed": "node seed/seed.js"
   },
   "jest": {
-    "testMatch": ["**/tests/**/*.test.js"],
-    "testEnvironment": "node"
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "testEnvironment": "node",
+    "testTimeout": 600000
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mongoose": "^8.4.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "mongodb-memory-server": "^10.0.0",
     "nodemon": "^3.1.4",
     "supertest": "^7.0.0"
   }
