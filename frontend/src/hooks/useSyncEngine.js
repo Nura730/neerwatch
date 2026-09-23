@@ -79,6 +79,7 @@ export function useSyncEngine() {
       if (data && Array.isArray(data.results)) {
         for (const result of data.results) {
           switch (result.status) {
+            case 'created':
             case 'synced':
               await markSynced(result.clientId);
               break;
@@ -89,13 +90,11 @@ export function useSyncEngine() {
               await markFailed(result.clientId, result.message);
               break;
             default:
-              // Unknown status — leave as syncing, will be reset on next startup
+              await markFailed(result.clientId, `Unexpected sync status: ${result.status}`);
               break;
           }
         }
       } else {
-        // Backend doesn't yet return results[] — fall back to marking all as synced
-        // This is a graceful fallback until backend implements per-record results.
         for (const obs of pending) {
           await markSynced(obs.clientId);
         }
