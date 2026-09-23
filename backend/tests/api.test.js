@@ -425,3 +425,44 @@ describe('GET /api/rainfall', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Invalid date parameter validation (P2-8)
+// ---------------------------------------------------------------------------
+describe('Date parameter validation', () => {
+  it('GET /api/tests?from=invalid returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/invalid/i);
+  });
+
+  it('GET /api/tests?to=garbage returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests?to=garbage')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('GET /api/tests/map?from=invalid returns 400', async () => {
+    const res = await request(app)
+      .get('/api/tests/map?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+
+  it('GET /api/rainfall?from=invalid returns 400', async () => {
+    const Rainfall = require('../src/models/Rainfall');
+    await Rainfall.create({ wardId: 'ward-01', rainfallMm: 5.0, recordedAt: new Date('2024-03-15') });
+
+    const res = await request(app)
+      .get('/api/rainfall?from=invalid')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+  });
+});

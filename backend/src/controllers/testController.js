@@ -66,8 +66,16 @@ async function listTests(req, res, next) {
     if (req.query.testType) filter.testType = req.query.testType;
     if (req.query.from || req.query.to) {
       filter.testedAt = {};
-      if (req.query.from) filter.testedAt.$gte = new Date(req.query.from);
-      if (req.query.to)   filter.testedAt.$lte = new Date(req.query.to);
+      if (req.query.from) {
+        const d = new Date(req.query.from);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid from date', 400);
+        filter.testedAt.$gte = d;
+      }
+      if (req.query.to) {
+        const d = new Date(req.query.to);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid to date', 400);
+        filter.testedAt.$lte = d;
+      }
     }
 
     const [observations, total] = await Promise.all([
@@ -93,11 +101,19 @@ async function mapTests(req, res, next) {
     if (req.query.testType) filter.testType = req.query.testType;
     if (req.query.from || req.query.to) {
       filter.testedAt = {};
-      if (req.query.from) filter.testedAt.$gte = new Date(req.query.from);
-      if (req.query.to)   filter.testedAt.$lte = new Date(req.query.to);
+      if (req.query.from) {
+        const d = new Date(req.query.from);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid from date', 400);
+        filter.testedAt.$gte = d;
+      }
+      if (req.query.to) {
+        const d = new Date(req.query.to);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid to date', 400);
+        filter.testedAt.$lte = d;
+      }
     }
 
-    const observations = await Observation.find(filter).sort({ testedAt: -1 });
+    const observations = await Observation.find(filter).sort({ testedAt: -1 }).limit(1000);
     return successResponse(res, { observations: observations.map(formatObs) });
   } catch (err) {
     next(err);

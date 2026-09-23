@@ -1,5 +1,5 @@
 const Rainfall = require('../models/Rainfall');
-const { successResponse } = require('../utils/response');
+const { successResponse, errorResponse } = require('../utils/response');
 
 async function getRainfall(req, res, next) {
   try {
@@ -7,8 +7,16 @@ async function getRainfall(req, res, next) {
     if (req.query.wardId) filter.wardId = req.query.wardId;
     if (req.query.from || req.query.to) {
       filter.recordedAt = {};
-      if (req.query.from) filter.recordedAt.$gte = new Date(req.query.from);
-      if (req.query.to)   filter.recordedAt.$lte = new Date(req.query.to);
+      if (req.query.from) {
+        const d = new Date(req.query.from);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid from date', 400);
+        filter.recordedAt.$gte = d;
+      }
+      if (req.query.to) {
+        const d = new Date(req.query.to);
+        if (isNaN(d.getTime())) return errorResponse(res, 'Invalid to date', 400);
+        filter.recordedAt.$lte = d;
+      }
     }
 
     const rainfall = await Rainfall.find(filter).sort({ recordedAt: -1 });

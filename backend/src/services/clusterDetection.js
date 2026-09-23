@@ -64,7 +64,7 @@ async function runClusterDetection() {
         centroid:         { type: 'Point', coordinates: [avgLng, avgLat] },
         radiusMetres:     CLUSTER_RADIUS_M,
         observationCount: groupObs.length,
-        failureRate:      parseFloat((groupObs.length / failing.length).toFixed(2)),
+        failureRate:      parseFloat((groupObs.length / observations.length).toFixed(2)),
         windowStart,
         windowEnd,
         wardId,
