@@ -4,7 +4,7 @@ import { AppShell } from './components/layout/AppShell.jsx';
 import { AuthProvider } from './auth/AuthContext.jsx';
 
 import { RoleGuard } from './auth/RoleGuard.jsx';
-import { canCreateTest, canSyncTests, canManageUsers } from './auth/permissions.js';
+import { canCreateTest, canSyncTests, canManageUsers, canViewFieldWork } from './auth/permissions.js';
 
 import { LoginPage } from './pages/LoginPage.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
@@ -17,6 +17,8 @@ import { WardsPage } from './pages/WardsPage.jsx';
 import { RainfallPage } from './pages/RainfallPage.jsx';
 import { SyncCenterPage } from './pages/SyncCenterPage.jsx';
 import { UsersPage } from './pages/UsersPage.jsx';
+import { FieldWorkPage } from './pages/FieldWorkPage.jsx';
+import { AnalyticsPage } from './pages/AnalyticsPage.jsx';
 
 export default function App() {
   const syncEngine = useSyncEngine();
@@ -51,6 +53,12 @@ export default function App() {
                 <UsersPage />
               </RoleGuard>
             } />
+            <Route path="field-work" element={
+              <RoleGuard isAllowed={canViewFieldWork}>
+                <FieldWorkPage />
+              </RoleGuard>
+            } />
+            <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

@@ -10,6 +10,7 @@ import { ObservationDetailDrawer } from '../components/ui/ObservationDetailDrawe
 import { formatDateTime, testTypeLabel, testTypeUnit, formatNumber } from '../utils/format.js';
 import { classifyResult } from '../services/mock.js';
 import { MapPin, MapPinOff, RefreshCw, Eye, Plus } from 'lucide-react';
+import { ConfidenceBadge } from '../components/ui/ConfidenceBadge.jsx';
 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -109,6 +110,16 @@ export function ObservationListPage() {
       key: 'syncStatus',
       header: 'Sync Status',
       render: (obs) => <SyncStatusBadge status={obs.syncStatus || 'synced'} />
+    },
+    {
+      key: 'confidence',
+      header: 'Confidence',
+      render: (obs) => (
+        <ConfidenceBadge
+          score={obs.confidenceScore}
+          level={obs.confidenceLevel}
+        />
+      )
     },
     {
       key: 'action',

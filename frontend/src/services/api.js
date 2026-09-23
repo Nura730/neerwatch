@@ -243,3 +243,85 @@ export async function getWards() {
   }
   return apiFetch('/api/wards');
 }
+
+// ── Field Tasks ───────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/field-tasks
+ * List field investigation tasks.
+ * @param {{ status?, wardId?, priority?, page?, limit? }} params
+ */
+export async function getFieldTasks(params = {}) {
+  return apiFetch(`/api/field-tasks${buildQuery(params)}`);
+}
+
+/**
+ * GET /api/field-tasks/:id
+ * Get a single field task by ID.
+ */
+export async function getFieldTask(id) {
+  return apiFetch(`/api/field-tasks/${id}`);
+}
+
+/**
+ * POST /api/field-tasks
+ * Create a new field task.
+ * @param {Object} body
+ */
+export async function createFieldTask(body) {
+  return apiFetch('/api/field-tasks', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * PATCH /api/field-tasks/:id
+ * Update a field task (general update).
+ * @param {string} id
+ * @param {Object} body
+ */
+export async function updateFieldTask(id, body) {
+  return apiFetch(`/api/field-tasks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * PATCH /api/field-tasks/:id/assign
+ * Assign a field task to an operator.
+ * @param {string} id
+ * @param {{ operatorId: string }} body
+ */
+export async function assignFieldTask(id, body) {
+  return apiFetch(`/api/field-tasks/${id}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * PATCH /api/field-tasks/:id/status
+ * Update the status of a field task.
+ * @param {string} id
+ * @param {{ status: string }} body
+ */
+export async function updateFieldTaskStatus(id, body) {
+  return apiFetch(`/api/field-tasks/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/analytics/contamination-trend
+ * Time-series contamination analytics.
+ * @param {{ period?, wardId?, testType?, from?, to? }} params
+ */
+export async function getContaminationTrend(params = {}) {
+  return apiFetch(`/api/analytics/contamination-trend${buildQuery(params)}`);
+}
+

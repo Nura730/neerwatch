@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { X, MapPin } from 'lucide-react';
 import { StatusBadge, SyncStatusBadge } from './StatusBadge.jsx';
+import { ConfidencePanel } from './ConfidenceBadge.jsx';
 import { formatDateTime, testTypeLabel } from '../../utils/format.js';
 import { Link } from 'react-router-dom';
 
@@ -72,6 +73,17 @@ export function ObservationDetailDrawer({ observation, onClose }) {
                   {testTypeLabel(observation.testType)}
                 </span>
               </div>
+            </div>
+
+            {/* Confidence Assessment — shown only if backend provides it */}
+            <div>
+              <h3 className="nw-label mb-2">Confidence Assessment</h3>
+              <ConfidencePanel
+                score={observation.confidenceScore}
+                level={observation.confidenceLevel}
+                factors={observation.confidenceFactors}
+                reasons={observation.confidenceReasons}
+              />
             </div>
 
             <div>

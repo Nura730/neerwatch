@@ -9,19 +9,22 @@ import {
   Building2,
   CloudRain,
   RefreshCw,
-  Users
+  Users,
+  ClipboardCheck,
+  TrendingUp,
+  LogIn,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { canCreateTest, canSyncTests, canManageUsers } from '../../auth/permissions.js';
+import { canCreateTest, canSyncTests, canManageUsers, canViewFieldWork } from '../../auth/permissions.js';
 
 const OBSERVATION_ITEMS = [
-  { to: '/',              icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/observations',  icon: ClipboardList,   label: 'Tests' },
-  { to: '/map',           icon: Map,             label: 'Map' },
-  { to: '/clusters',      icon: GitMerge,        label: 'Clusters' },
-  { to: '/alerts',        icon: Bell,            label: 'Alerts' },
-  { to: '/wards',         icon: Building2,       label: 'Wards' },
-  { to: '/rainfall',      icon: CloudRain,       label: 'Rainfall' },
+  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/observations', icon: ClipboardList,   label: 'Tests' },
+  { to: '/map',          icon: Map,             label: 'Map' },
+  { to: '/clusters',     icon: GitMerge,        label: 'Clusters' },
+  { to: '/alerts',       icon: Bell,            label: 'Alerts' },
+  { to: '/wards',        icon: Building2,       label: 'Wards' },
+  { to: '/rainfall',     icon: CloudRain,       label: 'Rainfall' },
 ];
 
 function NavItem({ to, icon: Icon, label, badge, end = false }) {
@@ -101,11 +104,37 @@ export function Sidebar({ pendingCount }) {
             <NavItem to="/users" icon={Users} label="User Management" />
           </div>
         )}
+
+        {/* Field Work — only for operator/admin */}
+        {canViewFieldWork(role) && (
+          <div>
+            <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Field
+            </h3>
+            <NavItem to="/field-work" icon={ClipboardCheck} label="Field Work" />
+          </div>
+        )}
+
+        {/* Analytics — available to all */}
+        <div>
+          <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Insights
+          </h3>
+          <NavItem to="/analytics" icon={TrendingUp} label="Analytics" />
+        </div>
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500">
-        Ernakulam / Kochi · Demo
+      <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500 space-y-3">
+        {!user && (
+          <NavLink
+            to="/login"
+            className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm font-medium transition-colors"
+          >
+            <LogIn size={15} /> Sign In for Operations
+          </NavLink>
+        )}
+        <p>Ernakulam / Kochi · Demo</p>
       </div>
     </nav>
   );
