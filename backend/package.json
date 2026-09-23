@@ -17,9 +17,11 @@
     "testTimeout": 600000
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.4.0"
   },
   "devDependencies": {

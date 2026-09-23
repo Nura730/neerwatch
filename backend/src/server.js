@@ -5,6 +5,12 @@ const mongoose = require('mongoose');
 
 const PORT = process.env.PORT || 5000;
 
+// Fail fast if authentication cannot be configured
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET environment variable is not set');
+  process.exit(1);
+}
+
 async function start() {
   try {
     await connectDatabase();
