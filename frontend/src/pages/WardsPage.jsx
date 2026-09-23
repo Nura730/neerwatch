@@ -1,9 +1,13 @@
+import React from 'react';
 import { useApiData } from '../hooks/useApiData.js';
 import { getWards } from '../services/api.js';
 import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/ui/States.jsx';
-import { StatCard } from '../components/ui/StatCard.jsx';
+import { MetricCard } from '../components/ui/MetricCard.jsx';
+import { DataTable } from '../components/ui/DataTable.jsx';
+import { StatusBadge } from '../components/ui/StatusBadge.jsx';
 import { formatDateTime, formatRate, formatNumber } from '../utils/format.js';
 import { useNavigate } from 'react-router-dom';
+import { RefreshCw, MapPin, List } from 'lucide-react';
 
 export function WardsPage() {
   const navigate = useNavigate();
@@ -21,167 +25,147 @@ export function WardsPage() {
   // Most affected ward
   const worstWard = [...wards].sort((a, b) => (b.failureRate || 0) - (a.failureRate || 0))[0];
 
+  const columns = [
+    {
+      key: 'wardId',
+      header: 'Ward Name / ID',
+      render: (ward) => (
+        <div>
+          <div className="font-semibold text-nw-text">{ward.name || `Ward ${ward.wardId}`}</div>
+          <div className="text-xs text-nw-text-faint font-mono">{ward.wardId}</div>
+        </div>
+      )
+    },
+    {
+      key: 'totalTests',
+      header: 'Total Tests',
+      render: (ward) => <span className="font-semibold">{ward.totalTests}</span>
+    },
+    {
+      key: 'passFail',
+      header: 'Pass / Fail',
+      render: (ward) => (
+        <div className="text-sm">
+          <span className="text-nw-pass font-semibold">{ward.passCount} pass</span>
+          <span className="text-nw-text-faint mx-1">/</span>
+          <span className="text-nw-fail font-semibold">{ward.failCount} fail</span>
+        </div>
+      )
+    },
+    {
+      key: 'failureRate',
+      header: 'Observation Failure Rate',
+      width: '25%',
+      render: (ward) => {
+        const failPercent = Math.round((ward.failureRate || 0) * 100);
+        const isHighFail = failPercent >= 30;
+        const isModerateFail = failPercent >= 15 && failPercent < 30;
+        const colorClass = isHighFail ? 'bg-nw-fail text-nw-fail' : isModerateFail ? 'bg-nw-warn text-nw-warn' : 'bg-nw-pass text-nw-pass';
+        const colorHex = isHighFail ? 'var(--nw-fail)' : isModerateFail ? 'var(--nw-warn)' : 'var(--nw-pass)';
+        
+        return (
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-2 bg-nw-surface-3 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${colorClass.split(' ')[0]}`}
+                style={{ width: `${Math.min(failPercent, 100)}%` }} 
+              />
+            </div>
+            <span 
+              className="text-xs font-bold w-10 text-right"
+              style={{ color: colorHex }}
+            >
+              {failPercent}%
+            </span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (ward) => {
+        const failPercent = Math.round((ward.failureRate || 0) * 100);
+        if (failPercent >= 30) return <StatusBadge label="Review required" variant="fail" />;
+        if (failPercent >= 15) return <StatusBadge label="Attention" variant="warn" />;
+        return <StatusBadge label="Normal" variant="pass" />;
+      }
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (ward) => (
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => navigate(`/observations?wardId=${ward.wardId}`)}
+            className="nw-btn nw-btn-secondary nw-btn-sm"
+            title="View all tests in this ward"
+          >
+            <List size={14} /> Tests
+          </button>
+          <button
+            onClick={() => navigate(`/map?wardId=${ward.wardId}`)}
+            className="nw-btn nw-btn-secondary nw-btn-sm"
+            title="View on Map"
+          >
+            <MapPin size={14} /> Map
+          </button>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 40 }}>
+    <div className="max-w-6xl mx-auto pb-10">
       <PageHeader
-        title="Ward Aggregation & Water Health"
-        subtitle="Administrative ward-level summaries aggregating household test results, compliance ratios, and sanitary failure rates across Kochi."
-        action={
+        title="Wards"
+        description="Administrative ward-level summaries aggregating household test results, compliance ratios, and observation failure rates."
+        actions={
           <button
             type="button"
-            className="btn btn--outline"
+            className="nw-btn nw-btn-secondary"
             onClick={refetch}
             disabled={loading}
-            style={{ fontSize: '0.8125rem' }}
           >
-            Refresh Wards
+            <RefreshCw size={14} /> Refresh Wards
           </button>
         }
       />
 
-      {/* Overview Stat Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 16,
-        marginBottom: 24
-      }}>
-        <StatCard
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <MetricCard
           label="Monitored Wards"
           value={totalWards}
           subtext="Administrative divisions"
         />
-        <StatCard
+        <MetricCard
           label="Total Ward Tests"
           value={formatNumber(totalTests)}
           subtext={`${formatNumber(totalPass)} passed · ${formatNumber(totalFail)} failed`}
         />
-        <StatCard
+        <MetricCard
           label="Overall Failure Rate"
           value={formatRate(overallRate)}
           variant={overallRate > 0.25 ? 'alert' : 'pass'}
-          subtext="Aggregate water test failure ratio"
+          subtext="Aggregate test failure ratio"
         />
-        <StatCard
+        <MetricCard
           label="Highest Failure Ward"
-          value={worstWard ? worstWard.name || worstWard.wardId : '—'}
+          value={worstWard ? worstWard.name || `Ward ${worstWard.wardId}` : '—'}
           variant="alert"
           subtext={worstWard ? `${formatRate(worstWard.failureRate)} failure rate` : 'No data'}
         />
       </div>
 
-      {/* State handling */}
       {loading && <LoadingState message="Aggregating ward-level statistics…" />}
       {error && <ErrorState message={error} onRetry={refetch} />}
 
-      {!loading && !error && wards.length === 0 && (
-        <EmptyState message="No ward summary records found." />
-      )}
-
-      {!loading && !error && wards.length > 0 && (
-        <div style={{
-          background: 'var(--nw-card-bg)',
-          border: '1px solid var(--nw-card-border)',
-          borderRadius: 8,
-          overflow: 'hidden',
-          boxShadow: 'var(--nw-card-shadow)',
-        }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Ward Name / ID</th>
-                <th>Total Tests</th>
-                <th>Pass / Fail</th>
-                <th style={{ width: 220 }}>Failure Rate</th>
-                <th>Last Tested</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {wards.map((ward) => {
-                const failPercent = Math.round((ward.failureRate || 0) * 100);
-                const isHighFail = failPercent >= 30;
-                const isModerateFail = failPercent >= 15 && failPercent < 30;
-
-                return (
-                  <tr key={ward.wardId}>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--nw-text)' }}>
-                        {ward.name || ward.wardId}
-                      </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>
-                        <code>{ward.wardId}</code>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600 }}>{ward.totalTests}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.8125rem' }}>
-                        <span style={{ color: '#16A34A', fontWeight: 600 }}>{ward.passCount} pass</span>
-                        {' / '}
-                        <span style={{ color: '#DC2626', fontWeight: 600 }}>{ward.failCount} fail</span>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          flex: 1,
-                          height: 8,
-                          background: 'var(--nw-bg-subtle)',
-                          borderRadius: 4,
-                          overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            width: `${Math.min(failPercent, 100)}%`,
-                            height: '100%',
-                            background: isHighFail ? '#DC2626' : isModerateFail ? '#D97706' : '#16A34A',
-                            borderRadius: 4,
-                          }} />
-                        </div>
-                        <span style={{
-                          fontSize: '0.8125rem',
-                          fontWeight: 700,
-                          minWidth: 42,
-                          color: isHighFail ? '#DC2626' : isModerateFail ? '#D97706' : 'var(--nw-text)',
-                        }}>
-                          {failPercent}%
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)' }}>
-                        {formatDateTime(ward.lastTestedAt)}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <button
-                          type="button"
-                          className="btn btn--outline"
-                          onClick={() => navigate(`/observations?wardId=${ward.wardId}`)}
-                          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-                          title="View all tests in this ward"
-                        >
-                          Tests
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--outline"
-                          onClick={() => navigate(`/map?wardId=${ward.wardId}`)}
-                          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-                          title="View on Map"
-                        >
-                          Map
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {!loading && !error && (
+        <DataTable 
+          columns={columns} 
+          data={wards} 
+          emptyState={<EmptyState message="No ward summary records found." />}
+        />
       )}
     </div>
   );

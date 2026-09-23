@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiData } from '../hooks/useApiData.js';
 import { getClusters, getWards } from '../services/api.js';
 import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/ui/States.jsx';
 import { StatusBadge } from '../components/ui/StatusBadge.jsx';
+import { FilterBar } from '../components/ui/FilterBar.jsx';
+import { ClusterEvidence } from '../components/ui/ClusterEvidence.jsx';
 import {
   formatDate,
   formatDateTime,
   formatMetres,
-  formatRate,
   testTypeLabel
 } from '../utils/format.js';
 import {
@@ -17,14 +18,14 @@ import {
   Activity,
   ExternalLink,
   Info,
-  Calendar
+  Calendar,
+  RefreshCw
 } from 'lucide-react';
 
 export function ClustersPage() {
   const navigate = useNavigate();
   const [filterActive, setFilterActive] = useState('active'); // 'all' | 'active' | 'resolved'
   const [filterWard, setFilterWard] = useState('');
-  const [selectedCluster, setSelectedCluster] = useState(null);
 
   const fetchClusters = useCallback(() => {
     const params = {};
@@ -46,110 +47,71 @@ export function ClustersPage() {
     return true;
   });
 
+  const activeFilters = [];
+  if (filterActive !== 'all') activeFilters.push({ key: 'status', label: 'Status', value: filterActive === 'active' ? 'Active' : 'Resolved' });
+  if (filterWard) activeFilters.push({ key: 'ward', label: 'Ward', value: filterWard });
+
+  const handleRemoveFilter = (key) => {
+    if (key === 'status') setFilterActive('all');
+    if (key === 'ward') setFilterWard('');
+  };
+
+  const handleClearAll = () => {
+    setFilterActive('all');
+    setFilterWard('');
+  };
+
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 40 }}>
+    <div className="max-w-6xl mx-auto pb-10">
       <PageHeader
         title="Contamination Clusters"
-        subtitle="Spatially and temporally concentrated water test failures detected by deterministic, rule-based algorithms (500m radius, 7-day window, ≥3 failing observations)."
-        action={
+        description="Spatially and temporally concentrated water test failures detected by deterministic algorithms (500m radius, 7-day window, ≥3 failing observations)."
+        actions={
           <button
             type="button"
-            className="btn btn--outline"
+            className="nw-btn nw-btn-secondary"
             onClick={refetch}
             disabled={loading}
-            style={{ fontSize: '0.8125rem' }}
           >
-            Refresh
+            <RefreshCw size={14} /> Refresh Clusters
           </button>
         }
       />
 
-      {/* Synthetic data banner */}
-      <div style={{
-        padding: '10px 16px',
-        background: 'rgba(2,132,199,0.06)',
-        border: '1px solid #BAE6FD',
-        borderRadius: 6,
-        fontSize: '0.8125rem',
-        color: '#0369A1',
-        marginBottom: 20,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}>
-        <Info size={16} />
-        <span>
+      <div className="bg-[#E0F2FE] border border-[#BAE6FD] text-[#0369A1] px-4 py-3 rounded flex items-start gap-3 text-sm mb-6">
+        <Info size={18} className="shrink-0 mt-0.5" />
+        <div>
           <strong>Cluster Rule Notice:</strong> Clusters represent spatial-temporal concentrations of test failures meeting the threshold. They indicate areas requiring field sanitary inspection and verification.
-        </span>
+        </div>
       </div>
 
-      {/* Filters Bar */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        marginBottom: 20,
-        background: 'var(--nw-card-bg)',
-        border: '1px solid var(--nw-card-border)',
-        borderRadius: 8,
-        padding: '12px 16px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)' }}>Status:</span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[
-              { id: 'active', label: 'Active Clusters' },
-              { id: 'all', label: 'All Clusters' },
-              { id: 'resolved', label: 'Resolved' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setFilterActive(tab.id)}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 4,
-                  fontSize: '0.75rem',
-                  fontWeight: filterActive === tab.id ? 600 : 400,
-                  background: filterActive === tab.id ? 'var(--nw-sidebar-active)' : 'transparent',
-                  color: filterActive === tab.id ? '#0284C7' : 'var(--nw-text-muted)',
-                  border: filterActive === tab.id ? '1px solid #BAE6FD' : '1px solid transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)' }}>Ward:</span>
+      <FilterBar filters={activeFilters} onRemoveFilter={handleRemoveFilter} onClearAll={handleClearAll}>
+        <div className="flex flex-col">
+          <label className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Status</label>
           <select
-            value={filterWard}
-            onChange={(e) => setFilterWard(e.target.value)}
-            style={{
-              padding: '5px 10px',
-              borderRadius: 6,
-              border: '1px solid var(--nw-card-border)',
-              background: 'var(--nw-bg)',
-              color: 'var(--nw-text)',
-              fontSize: '0.8125rem',
-            }}
+            className="nw-input text-sm py-1.5 min-w-[140px]"
+            value={filterActive}
+            onChange={e => setFilterActive(e.target.value)}
           >
-            <option value="">All Wards</option>
-            {wards.map(w => (
-              <option key={w.wardId} value={w.wardId}>
-                {w.name || w.wardId}
-              </option>
-            ))}
+            <option value="active">Active Clusters</option>
+            <option value="resolved">Resolved</option>
+            <option value="all">All Clusters</option>
           </select>
         </div>
-      </div>
 
-      {/* Content State */}
+        <div className="flex flex-col">
+          <label className="text-[11px] font-semibold text-nw-text-muted uppercase tracking-wider mb-1">Ward</label>
+          <select
+            className="nw-input text-sm py-1.5 min-w-[140px]"
+            value={filterWard}
+            onChange={e => setFilterWard(e.target.value)}
+          >
+            <option value="">All Wards</option>
+            {wards.map(w => <option key={w.wardId} value={w.wardId}>{w.name || w.wardId}</option>)}
+          </select>
+        </div>
+      </FilterBar>
+
       {loading && <LoadingState message="Loading cluster records…" />}
       {error && <ErrorState message={error} onRetry={refetch} />}
 
@@ -164,119 +126,63 @@ export function ClustersPage() {
       )}
 
       {!loading && !error && displayedClusters.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(330px, 1fr))', gap: 16 }}>
-          {displayedClusters.map(cluster => {
-            const isSelected = selectedCluster?.id === cluster.id;
-            return (
-              <div
-                key={cluster.id}
-                onClick={() => setSelectedCluster(isSelected ? null : cluster)}
-                style={{
-                  background: 'var(--nw-card-bg)',
-                  border: isSelected ? '2px solid #0284C7' : '1px solid var(--nw-card-border)',
-                  borderRadius: 8,
-                  padding: '18px 20px',
-                  boxShadow: 'var(--nw-card-shadow)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                  position: 'relative',
-                  cursor: 'pointer',
-                }}
-              >
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--nw-text)' }}>
-                        {testTypeLabel(cluster.testType)} Cluster
-                      </span>
-                      <StatusBadge
-                        label={cluster.active ? 'Active' : 'Resolved'}
-                        variant={cluster.active ? 'cluster' : 'pass'}
-                        size="xs"
-                      />
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={12} />
-                      <span>{cluster.wardId}</span>
-                      <span>·</span>
-                      <span>Radius: {formatMetres(cluster.radiusMetres)}</span>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {displayedClusters.map(cluster => (
+            <div
+              key={cluster.id}
+              className="bg-nw-surface border border-nw-border rounded-md shadow-nw-sm flex flex-col h-full hover:border-nw-teal/30 transition-colors"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-nw-border bg-nw-surface-2 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <StatusBadge label="Possible Cluster" variant="cluster" size="xs" />
+                    {cluster.active && <StatusBadge label="Active" variant="active" size="xs" />}
+                    {!cluster.active && <StatusBadge label="Resolved" variant="pass" size="xs" />}
+                  </div>
+                  <div className="font-bold text-lg text-nw-text">
+                    {testTypeLabel(cluster.testType)} Cluster
+                  </div>
+                  <div className="text-xs text-nw-text-muted flex items-center gap-2 mt-1">
+                    <span className="flex items-center gap-1"><MapPin size={12} /> {cluster.wardId}</span>
+                    <span>·</span>
+                    <span>Radius: {formatMetres(cluster.radiusMetres)}</span>
                   </div>
                 </div>
+              </div>
 
-                {/* Metrics Grid */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 10,
-                  background: 'var(--nw-bg-subtle)',
-                  padding: '10px 14px',
-                  borderRadius: 6,
-                }}>
-                  <div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Observations
-                    </div>
-                    <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--nw-text)' }}>
-                      {cluster.observationCount} failing
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Failure Rate
-                    </div>
-                    <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#DC2626' }}>
-                      {formatRate(cluster.failureRate)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={12} />
-                    <span>Detected: {formatDateTime(cluster.detectedAt)}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Calendar size={12} />
-                    <span>
-                      Window: {formatDate(cluster.windowStart)} – {formatDate(cluster.windowEnd)}
-                    </span>
+              {/* Evidence & Details */}
+              <div className="p-5 flex flex-col gap-6 flex-1">
+                <ClusterEvidence cluster={cluster} />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-xs text-nw-text-muted flex flex-col gap-2 bg-nw-bg rounded p-3 border border-nw-border-2">
+                    <div className="flex items-center gap-1.5"><Clock size={12} /> Detected: {formatDateTime(cluster.detectedAt)}</div>
+                    <div className="flex items-center gap-1.5"><Calendar size={12} /> {formatDate(cluster.windowStart)} – {formatDate(cluster.windowEnd)}</div>
                   </div>
                   {cluster.centroid && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Activity size={12} />
-                      <span>
-                        Centroid: {cluster.centroid.lat?.toFixed(4)}°N, {cluster.centroid.lng?.toFixed(4)}°E
-                      </span>
+                    <div className="text-xs text-nw-text-muted flex flex-col gap-2 bg-nw-bg rounded p-3 border border-nw-border-2 justify-center">
+                      <div className="flex items-center gap-1.5">
+                        <Activity size={12} className="shrink-0" />
+                        <span>Centroid: {cluster.centroid.lat?.toFixed(4)}°N, {cluster.centroid.lng?.toFixed(4)}°E</span>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Action button */}
-                <div style={{ marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--nw-card-border)' }}>
-                  <button
-                    type="button"
-                    className="btn btn--outline"
-                    onClick={() => navigate(`/map?wardId=${cluster.wardId}`)}
-                    style={{
-                      width: '100%',
-                      fontSize: '0.8125rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6
-                    }}
-                  >
-                    <span>Inspect On Geographic Map</span>
-                    <ExternalLink size={13} />
-                  </button>
-                </div>
               </div>
-            );
-          })}
+
+              {/* Actions */}
+              <div className="p-4 border-t border-nw-border bg-nw-surface-2 mt-auto">
+                <button
+                  type="button"
+                  className="w-full nw-btn nw-btn-secondary"
+                  onClick={() => navigate(`/map?wardId=${cluster.wardId}`)}
+                >
+                  Inspect On Geographic Map <ExternalLink size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

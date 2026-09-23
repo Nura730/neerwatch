@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { PageHeader } from '../components/ui/States.jsx';
 import { saveObservation } from '../db/observationStore.js';
@@ -182,27 +182,16 @@ export function ObservationFormPage() {
   const selectedTypeObj = TEST_TYPES.find(t => t.value === testType);
 
   return (
-    <div style={{ maxWidth: 840, margin: '0 auto', paddingBottom: 40 }}>
+    <div className="max-w-3xl mx-auto pb-10">
       <PageHeader
         title="Record New Observation"
-        subtitle="Record water quality measurements directly on site. Data is saved to your local database immediately and safely queued for synchronization."
+        description="Record water quality measurements directly on site. Data is saved to your local database immediately and safely queued for synchronization."
       />
 
       {/* Offline notice banner */}
       {!isOnline && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '12px 16px',
-          background: 'rgba(217,119,6,0.1)',
-          border: '1px solid #D97706',
-          borderRadius: 8,
-          marginBottom: 20,
-          color: '#B45309',
-          fontSize: '0.875rem'
-        }}>
-          <WifiOff size={18} />
+        <div className="flex items-center gap-3 p-4 bg-nw-warn-bg border border-nw-warn/30 rounded-md text-nw-warn font-medium text-sm mb-6 shadow-sm">
+          <WifiOff size={18} className="shrink-0" />
           <div>
             <strong>Offline Mode Active:</strong> Your observation will be stored safely in local IndexedDB. It will automatically upload when connectivity returns.
           </div>
@@ -211,36 +200,26 @@ export function ObservationFormPage() {
 
       {/* Success alert */}
       {successInfo && (
-        <div style={{
-          padding: '16px 20px',
-          background: 'rgba(16,185,129,0.1)',
-          border: '1px solid #10B981',
-          borderRadius: 8,
-          marginBottom: 24,
-          color: '#065F46',
-          fontSize: '0.875rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontSize: '0.9375rem', marginBottom: 6 }}>
-            <CheckCircle2 size={20} color="#10B981" />
+        <div className="p-5 bg-nw-pass-bg border border-nw-pass/30 rounded-md mb-6 text-nw-pass">
+          <div className="flex items-center gap-2 font-bold text-base mb-2">
+            <CheckCircle2 size={20} />
             Observation Stored Successfully
           </div>
-          <p style={{ margin: '4px 0 10px' }}>
-            Saved to local storage with Client ID: <code style={{ background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4 }}>{successInfo.clientId}</code>
+          <p className="text-sm text-nw-text-2 mb-4">
+            Saved to local storage with Client ID: <code className="bg-white/50 px-2 py-0.5 rounded border border-nw-pass/20">{successInfo.clientId}</code>
           </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+          <div className="flex gap-3">
             <button
               type="button"
-              className="btn btn--outline"
+              className="nw-btn nw-btn-secondary"
               onClick={() => setSuccessInfo(null)}
-              style={{ fontSize: '0.8125rem', padding: '6px 14px' }}
             >
               Record Another
             </button>
             <button
               type="button"
-              className="btn btn--secondary"
+              className="nw-btn nw-btn-primary"
               onClick={() => navigate('/observations')}
-              style={{ fontSize: '0.8125rem', padding: '6px 14px' }}
             >
               View Observations List
             </button>
@@ -249,36 +228,19 @@ export function ObservationFormPage() {
       )}
 
       {/* Form Card */}
-      <form onSubmit={handleSubmit} style={{
-        background: 'var(--nw-card-bg)',
-        border: '1px solid var(--nw-card-border)',
-        borderRadius: 8,
-        padding: '24px 28px',
-        boxShadow: 'var(--nw-card-shadow)',
-      }}>
+      <form onSubmit={handleSubmit} className="bg-nw-surface border border-nw-border rounded-lg p-6 md:p-8 shadow-nw">
         {formError && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '10px 14px',
-            background: 'rgba(239,68,68,0.1)',
-            border: '1px solid #EF4444',
-            borderRadius: 6,
-            color: '#B91C1C',
-            fontSize: '0.875rem',
-            marginBottom: 20
-          }}>
-            <AlertCircle size={18} />
+          <div className="flex items-center gap-3 p-3 bg-nw-fail-bg border border-nw-fail/30 rounded-md text-nw-fail text-sm font-medium mb-6">
+            <AlertCircle size={18} className="shrink-0" />
             <span>{formError}</span>
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 20 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Household ID */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 6 }}>
-              Household ID <span style={{ color: '#EF4444' }}>*</span>
+            <label className="nw-label mb-1.5 flex items-center gap-1">
+              Household ID <span className="text-nw-fail">*</span>
             </label>
             <input
               type="text"
@@ -286,39 +248,23 @@ export function ObservationFormPage() {
               value={householdId}
               onChange={(e) => setHouseholdId(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 6,
-                border: '1px solid var(--nw-card-border)',
-                background: 'var(--nw-bg)',
-                color: 'var(--nw-text)',
-                fontSize: '0.875rem',
-              }}
+              className="nw-input"
             />
-            <span style={{ fontSize: '0.75rem', color: 'var(--nw-text-faint)', marginTop: 4, display: 'block' }}>
+            <span className="text-xs text-nw-text-faint mt-1.5 block">
               Unique household or tap point identifier
             </span>
           </div>
 
           {/* Ward Selection */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 6 }}>
-              Administrative Ward <span style={{ color: '#EF4444' }}>*</span>
+            <label className="nw-label mb-1.5 flex items-center gap-1">
+              Administrative Ward <span className="text-nw-fail">*</span>
             </label>
             <select
               value={wardId}
               onChange={(e) => setWardId(e.target.value)}
               disabled={loadingWards}
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 6,
-                border: '1px solid var(--nw-card-border)',
-                background: 'var(--nw-bg)',
-                color: 'var(--nw-text)',
-                fontSize: '0.875rem',
-              }}
+              className="nw-input"
             >
               {wards.map((w) => (
                 <option key={w.wardId} value={w.wardId}>
@@ -326,18 +272,18 @@ export function ObservationFormPage() {
                 </option>
               ))}
             </select>
-            <span style={{ fontSize: '0.75rem', color: 'var(--nw-text-faint)', marginTop: 4, display: 'block' }}>
+            <span className="text-xs text-nw-text-faint mt-1.5 block">
               Ward responsible for water supply line
             </span>
           </div>
         </div>
 
         {/* Test Type selector */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 8 }}>
-            Water Quality Parameter <span style={{ color: '#EF4444' }}>*</span>
+        <div className="mb-6">
+          <label className="nw-label mb-2.5 flex items-center gap-1">
+            Water Quality Parameter <span className="text-nw-fail">*</span>
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {TEST_TYPES.map((t) => {
               const selected = testType === t.value;
               return (
@@ -345,20 +291,14 @@ export function ObservationFormPage() {
                   type="button"
                   key={t.value}
                   onClick={() => setTestType(t.value)}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 6,
-                    border: selected ? '2px solid #0284C7' : '1px solid var(--nw-card-border)',
-                    background: selected ? 'rgba(2,132,199,0.06)' : 'var(--nw-bg)',
-                    color: selected ? '#0284C7' : 'var(--nw-text)',
-                    fontWeight: selected ? 600 : 400,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`p-3 rounded-md border text-left transition-all ${
+                    selected 
+                      ? 'border-[#0284C7] bg-[#0284C7]/10 text-[#0284C7] font-semibold' 
+                      : 'border-nw-border bg-nw-bg text-nw-text hover:border-nw-border-2 hover:bg-nw-surface-2'
+                  }`}
                 >
-                  <div style={{ fontSize: '0.875rem' }}>{t.label.split(' (')[0]}</div>
-                  <div style={{ fontSize: '0.75rem', color: selected ? '#0284C7' : 'var(--nw-text-faint)', marginTop: 2 }}>
+                  <div className="text-sm">{t.label.split(' (')[0]}</div>
+                  <div className={`text-xs mt-1 ${selected ? 'text-[#0284C7]/80' : 'text-nw-text-faint'}`}>
                     {t.unit ? `Unit: ${t.unit}` : 'Standard scale'}
                   </div>
                 </button>
@@ -366,28 +306,18 @@ export function ObservationFormPage() {
             })}
           </div>
           {selectedTypeObj && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 8,
-              fontSize: '0.75rem',
-              color: 'var(--nw-text-faint)',
-              background: 'var(--nw-bg-subtle)',
-              padding: '6px 12px',
-              borderRadius: 4
-            }}>
-              <Info size={14} />
+            <div className="flex items-center gap-2 mt-3 text-xs text-nw-text-muted bg-nw-bg-subtle p-2 rounded border border-nw-border-2 font-medium">
+              <Info size={14} className="text-nw-teal" />
               <span>{selectedTypeObj.hint}</span>
             </div>
           )}
         </div>
 
         {/* Result & Timestamp */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 24 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 6 }}>
-              Test Result Value ({selectedTypeObj?.unit || 'value'}) <span style={{ color: '#EF4444' }}>*</span>
+            <label className="nw-label mb-1.5 flex items-center gap-1">
+              Test Result Value ({selectedTypeObj?.unit || 'value'}) <span className="text-nw-fail">*</span>
             </label>
             <input
               type="number"
@@ -396,75 +326,52 @@ export function ObservationFormPage() {
               value={result}
               onChange={(e) => setResult(e.target.value)}
               required
-              style={{
-                width: '100%',
-                padding: '9px 12px',
-                borderRadius: 6,
-                border: '1px solid var(--nw-card-border)',
-                background: 'var(--nw-bg)',
-                color: 'var(--nw-text)',
-                fontSize: '0.875rem',
-              }}
+              className="nw-input"
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 6 }}>
-              Sample Timestamp <span style={{ color: '#EF4444' }}>*</span>
+            <label className="nw-label mb-1.5 flex items-center gap-1">
+              Sample Timestamp <span className="text-nw-fail">*</span>
             </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="datetime-local"
-                value={testedAt}
-                onChange={(e) => setTestedAt(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--nw-card-border)',
-                  background: 'var(--nw-bg)',
-                  color: 'var(--nw-text)',
-                  fontSize: '0.875rem',
-                }}
-              />
-            </div>
+            <input
+              type="datetime-local"
+              value={testedAt}
+              onChange={(e) => setTestedAt(e.target.value)}
+              required
+              className="nw-input"
+            />
           </div>
         </div>
 
         {/* Location Section */}
-        <div style={{
-          borderTop: '1px solid var(--nw-card-border)',
-          paddingTop: 20,
-          marginBottom: 24,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: 'var(--nw-text)' }}>
+        <div className="border-t border-nw-border-2 pt-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
                 checked={hasLocation}
                 onChange={(e) => setHasLocation(e.target.checked)}
-                style={{ width: 16, height: 16, accentColor: '#0284C7' }}
+                className="w-4 h-4 text-nw-teal rounded border-nw-border-2 focus:ring-nw-teal"
               />
-              <span>Attach GPS Coordinates</span>
+              <span className="text-sm font-semibold text-nw-text group-hover:text-nw-navy transition-colors">Attach GPS Coordinates</span>
             </label>
 
             {hasLocation && (
               <button
                 type="button"
-                className="btn btn--outline"
+                className="nw-btn nw-btn-secondary nw-btn-sm flex items-center gap-2"
                 onClick={handleCaptureGps}
                 disabled={detectingGps}
-                style={{ fontSize: '0.75rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 {detectingGps ? (
                   <>
-                    <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                    <RefreshCw size={13} className="animate-spin" />
                     Detecting GPS…
                   </>
                 ) : (
                   <>
-                    <Compass size={13} />
+                    <Compass size={13} className="text-nw-teal" />
                     Current Device GPS
                   </>
                 )}
@@ -473,74 +380,48 @@ export function ObservationFormPage() {
           </div>
 
           {gpsError && (
-            <div style={{ fontSize: '0.75rem', color: '#B45309', marginBottom: 10 }}>
+            <div className="text-xs font-medium text-nw-warn mb-4 bg-nw-warn-bg p-2 rounded">
               {gpsError}
             </div>
           )}
 
           {hasLocation ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--nw-text-muted)', marginBottom: 4 }}>
-                  Latitude (°N)
-                </label>
+                <label className="nw-label mb-1.5">Latitude (°N)</label>
                 <input
                   type="number"
                   step="any"
                   value={lat}
                   onChange={(e) => setLat(e.target.value)}
                   placeholder="9.9312"
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--nw-card-border)',
-                    background: 'var(--nw-bg)',
-                    color: 'var(--nw-text)',
-                    fontSize: '0.8125rem',
-                  }}
+                  className="nw-input font-mono"
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--nw-text-muted)', marginBottom: 4 }}>
-                  Longitude (°E)
-                </label>
+                <label className="nw-label mb-1.5">Longitude (°E)</label>
                 <input
                   type="number"
                   step="any"
                   value={lng}
                   onChange={(e) => setLng(e.target.value)}
                   placeholder="76.2673"
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    border: '1px solid var(--nw-card-border)',
-                    background: 'var(--nw-bg)',
-                    color: 'var(--nw-text)',
-                    fontSize: '0.8125rem',
-                  }}
+                  className="nw-input font-mono"
                 />
               </div>
             </div>
           ) : (
-            <div style={{
-              fontSize: '0.8125rem',
-              color: 'var(--nw-text-muted)',
-              background: 'var(--nw-bg-subtle)',
-              padding: '10px 14px',
-              borderRadius: 6
-            }}>
-              GPS coordinate capture omitted. This test will be recorded as <em>missing location</em> and will appear in aggregate and list reports, but excluded from map-based spatial cluster detection.
+            <div className="text-xs text-nw-text-muted bg-nw-surface-2 p-3 rounded-md border border-nw-border-2 leading-relaxed">
+              GPS coordinate capture omitted. This test will be recorded as <em>missing location</em> and will appear in aggregate and list reports, but will be excluded from map-based spatial cluster detection.
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-nw-border-2">
           <button
             type="button"
-            className="btn btn--outline"
+            className="nw-btn nw-btn-secondary"
             onClick={() => navigate('/observations')}
             disabled={submitting}
           >
@@ -548,13 +429,12 @@ export function ObservationFormPage() {
           </button>
           <button
             type="submit"
-            className="btn btn--primary"
+            className="nw-btn nw-btn-primary min-w-[180px] flex items-center justify-center gap-2"
             disabled={submitting}
-            style={{ minWidth: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >
             {submitting ? (
               <>
-                <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                <RefreshCw size={16} className="animate-spin" />
                 Saving to Local DB…
               </>
             ) : (

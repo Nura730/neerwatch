@@ -25,63 +25,36 @@ const NAV_ITEMS = [
 
 export function Sidebar({ pendingCount }) {
   return (
-    <nav className="sidebar" aria-label="Main navigation">
+    <nav className="w-[240px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 text-slate-300" aria-label="Main navigation">
       {/* Brand */}
-      <div style={{
-        padding: '18px 16px 14px',
-        borderBottom: '1px solid #1E293B',
-      }}>
-        <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#F1F5F9', letterSpacing: '0.03em' }}>
+      <div className="px-5 pt-6 pb-5 border-b border-slate-800">
+        <div className="font-bold text-base text-slate-100 tracking-wider">
           NEERWATCH
         </div>
-        <div style={{ fontSize: '0.6875rem', color: '#64748B', marginTop: 2 }}>
+        <div className="text-xs text-slate-400 mt-1">
           Water Observation Platform
         </div>
       </div>
 
       {/* Nav links */}
-      <div style={{ flex: 1, padding: '8px 0' }}>
+      <div className="flex-1 py-4 overflow-y-auto">
         {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '8px 16px',
-              fontSize: '0.8125rem',
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#38BDF8' : 'var(--nw-sidebar-text)',
-              background: isActive ? 'rgba(56,189,248,0.08)' : 'transparent',
-              textDecoration: 'none',
-              borderLeft: isActive ? '2px solid #38BDF8' : '2px solid transparent',
-              transition: 'background 0.1s, color 0.1s',
-            })}
-            onMouseEnter={e => {
-              if (!e.currentTarget.style.background.includes('rgba')) {
-                e.currentTarget.style.background = '#1E293B';
+            className={({ isActive }) => `
+              flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors border-l-2
+              ${isActive 
+                ? 'border-[#38BDF8] text-[#38BDF8] bg-[#38BDF8]/10' 
+                : 'border-transparent text-slate-400 hover:bg-slate-800 hover:text-slate-200'
               }
-            }}
-            onMouseLeave={e => {
-              if (!e.currentTarget.style.background.includes('rgba')) {
-                e.currentTarget.style.background = 'transparent';
-              }
-            }}
+            `}
           >
-            <Icon size={15} />
+            <Icon size={16} />
             <span>{label}</span>
             {label === 'Sync Center' && pendingCount > 0 && (
-              <span style={{
-                marginLeft: 'auto',
-                background: '#D97706',
-                color: '#fff',
-                borderRadius: 10,
-                padding: '1px 7px',
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-              }}>
+              <span className="ml-auto bg-[#D97706] text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
                 {pendingCount}
               </span>
             )}
@@ -90,12 +63,7 @@ export function Sidebar({ pendingCount }) {
       </div>
 
       {/* Footer */}
-      <div style={{
-        padding: '12px 16px',
-        borderTop: '1px solid #1E293B',
-        fontSize: '0.6875rem',
-        color: '#334155',
-      }}>
+      <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500">
         Ernakulam / Kochi · Demo
       </div>
     </nav>

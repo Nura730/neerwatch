@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PageHeader, EmptyState, LoadingState } from '../components/ui/States.jsx';
 import { SyncStatusBadge } from '../components/ui/StatusBadge.jsx';
+import { DataTable } from '../components/ui/DataTable.jsx';
+import { FilterBar } from '../components/ui/FilterBar.jsx';
+import { MetricCard } from '../components/ui/MetricCard.jsx';
 import {
   getAllObservations,
   retryFailed,
@@ -16,7 +19,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
-  Trash2
+  Trash2,
+  Activity
 } from 'lucide-react';
 
 export function SyncCenterPage() {
@@ -92,136 +96,181 @@ export function SyncCenterPage() {
     return true;
   });
 
-  return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 40 }}>
-      <PageHeader
-        title="Sync Center & Offline Queue"
-        subtitle="Manage offline-queued observations, monitor IndexedDB storage, and synchronize local observations with the central backend server."
-        action={
-          <div style={{ display: 'flex', gap: 10 }}>
+  const activeFilters = [];
+  if (filterTab !== 'all') activeFilters.push({ key: 'status', label: 'Status Filter', value: filterTab.charAt(0).toUpperCase() + filterTab.slice(1) });
+
+  const handleRemoveFilter = () => setFilterTab('all');
+  const handleClearAll = () => setFilterTab('all');
+
+  const columns = [
+    {
+      key: 'syncStatus',
+      header: 'Sync Status',
+      render: (obs) => (
+        <div className="flex flex-col gap-1 items-start">
+          <SyncStatusBadge status={obs.syncStatus} />
+          {obs.failReason && (
+            <div className="text-[10px] font-medium text-nw-fail max-w-[160px] leading-tight">
+              {obs.failReason}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'clientId',
+      header: 'Client ID / Household',
+      render: (obs) => (
+        <div>
+          <div className="font-semibold text-nw-text">{obs.householdId}</div>
+          <div className="text-[10px] text-nw-text-faint font-mono mt-0.5">{obs.clientId}</div>
+        </div>
+      )
+    },
+    {
+      key: 'wardId',
+      header: 'Ward',
+      render: (obs) => <span className="text-sm">Ward {obs.wardId}</span>
+    },
+    {
+      key: 'result',
+      header: 'Parameter & Result',
+      render: (obs) => (
+        <div>
+          <div className="font-bold text-sm text-nw-text">
+            {obs.result} <span className="text-[10px] font-normal text-nw-text-faint">{testTypeUnit(obs.testType)}</span>
+          </div>
+          <div className="text-[10px] font-semibold text-nw-text-muted mt-0.5 tracking-wider uppercase">
+            {testTypeLabel(obs.testType)}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'testedAt',
+      header: 'Sampled Timestamp',
+      render: (obs) => <span className="text-xs text-nw-text-muted">{formatDateTime(obs.testedAt)}</span>
+    },
+    {
+      key: 'location',
+      header: 'GPS Location',
+      render: (obs) => {
+        const hasGps = obs.location && obs.location.lat != null && obs.location.lng != null;
+        return hasGps ? (
+          <span className="text-[11px] font-mono text-nw-text-2">
+            {obs.location.lat?.toFixed(4)}, {obs.location.lng?.toFixed(4)}
+          </span>
+        ) : (
+          <span className="text-[11px] font-bold text-nw-warn">Missing GPS</span>
+        );
+      }
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (obs) => {
+        const isFailed = obs.syncStatus === 'failed';
+        return (
+          <div className="flex justify-end gap-2">
+            {isFailed && (
+              <button
+                type="button"
+                className="text-[#0284C7] hover:bg-[#E0F2FE] p-1.5 rounded transition-colors"
+                onClick={() => handleRetry(obs.clientId)}
+                title="Retry syncing this record"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
             <button
               type="button"
-              className="btn btn--outline"
+              className="text-nw-fail hover:bg-nw-fail-bg p-1.5 rounded transition-colors"
+              onClick={() => handleDelete(obs.clientId)}
+              title="Delete from local database"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        );
+      }
+    }
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto pb-10">
+      <PageHeader
+        title="Sync Center & Offline Queue"
+        description="Manage offline-queued observations, monitor IndexedDB storage, and synchronize local observations with the central backend server."
+        actions={
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="nw-btn nw-btn-secondary"
               onClick={handleResetStuck}
               title="Reset any stuck syncing records to pending"
-              style={{ fontSize: '0.8125rem' }}
             >
-              Reset Stuck Records
+              Reset Stuck
             </button>
             <button
               type="button"
-              className="btn btn--primary"
+              className="nw-btn nw-btn-primary flex items-center gap-2"
               onClick={handleManualSync}
               disabled={!isOnline || isSyncing || pendingCount === 0}
-              style={{ fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <RefreshCw size={14} style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
+              <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
               <span>{isSyncing ? 'Syncing Now…' : 'Sync Pending Now'}</span>
             </button>
           </div>
         }
       />
 
-      {/* Sync Status Alert Banner */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 16,
-        marginBottom: 24,
-      }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Network & Engine State */}
-        <div style={{
-          background: 'var(--nw-card-bg)',
-          border: '1px solid var(--nw-card-border)',
-          borderRadius: 8,
-          padding: '16px 20px',
-          boxShadow: 'var(--nw-card-shadow)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)' }}>
-              Network Connection
-            </span>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              color: isOnline ? '#16A34A' : '#D97706',
-            }}>
-              {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
-              <span>{isOnline ? 'Online (Connected)' : 'Offline (Disconnected)'}</span>
+        <div className="bg-nw-surface border border-nw-border rounded-md p-6 shadow-nw-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-bold text-nw-text uppercase tracking-wide">
+                Network Connection
+              </span>
+              <div className={`flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full ${isOnline ? 'bg-nw-pass-bg text-nw-pass' : 'bg-nw-warn-bg text-nw-warn'}`}>
+                {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+                <span>{isOnline ? 'Online (Connected)' : 'Offline (Disconnected)'}</span>
+              </div>
             </div>
+
+            <p className="text-sm text-nw-text-muted leading-relaxed mb-4">
+              {isOnline ? (
+                'Live connection to central gateway active. Pending records synchronize automatically when connection is restored.'
+              ) : (
+                'Operating in offline mode. Observations are stored safely in browser IndexedDB.'
+              )}
+            </p>
           </div>
 
-          <div style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)', lineHeight: 1.5 }}>
-            {isOnline ? (
-              'Live connection to central gateway active. Pending records synchronize automatically.'
-            ) : (
-              'Operating in offline mode. Observations are stored safely in browser IndexedDB.'
-            )}
-          </div>
-
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--nw-card-border)', fontSize: '0.75rem', color: 'var(--nw-text-faint)' }}>
+          <div className="mt-4 pt-4 border-t border-nw-border flex items-center gap-2 text-xs font-medium text-nw-text-muted">
+            <Activity size={14} />
             Last Sync: {lastSyncTime ? formatRelative(lastSyncTime) : 'None recorded this session'}
           </div>
         </div>
 
         {/* Queue Metrics */}
-        <div style={{
-          background: 'var(--nw-card-bg)',
-          border: '1px solid var(--nw-card-border)',
-          borderRadius: 8,
-          padding: '16px 20px',
-          boxShadow: 'var(--nw-card-shadow)',
-        }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)', marginBottom: 12 }}>
+        <div className="bg-nw-surface border border-nw-border rounded-md p-6 shadow-nw-sm">
+          <div className="text-sm font-bold text-nw-text uppercase tracking-wide mb-4">
             IndexedDB Local Queue
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, textAlign: 'center' }}>
-            <div style={{ background: 'var(--nw-bg-subtle)', padding: '8px 4px', borderRadius: 6 }}>
-              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: counts.pending > 0 ? '#D97706' : 'var(--nw-text)' }}>
-                {counts.pending}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>Pending</div>
-            </div>
-            <div style={{ background: 'var(--nw-bg-subtle)', padding: '8px 4px', borderRadius: 6 }}>
-              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#16A34A' }}>
-                {counts.synced}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>Synced</div>
-            </div>
-            <div style={{ background: 'var(--nw-bg-subtle)', padding: '8px 4px', borderRadius: 6 }}>
-              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: counts.failed > 0 ? '#DC2626' : 'var(--nw-text)' }}>
-                {counts.failed}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>Failed</div>
-            </div>
-            <div style={{ background: 'var(--nw-bg-subtle)', padding: '8px 4px', borderRadius: 6 }}>
-              <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--nw-text-muted)' }}>
-                {counts.duplicate}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>Duplicate</div>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard label="Pending" value={counts.pending} variant={counts.pending > 0 ? 'warn' : 'neutral'} />
+            <MetricCard label="Failed" value={counts.failed} variant={counts.failed > 0 ? 'alert' : 'neutral'} />
+            <MetricCard label="Synced" value={counts.synced} variant="pass" />
+            <MetricCard label="Duplicate" value={counts.duplicate} variant="neutral" />
           </div>
         </div>
       </div>
 
       {/* Sync Error Notice if any */}
       {syncError && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '12px 16px',
-          background: 'rgba(239,68,68,0.1)',
-          border: '1px solid #EF4444',
-          borderRadius: 8,
-          color: '#B91C1C',
-          fontSize: '0.875rem',
-          marginBottom: 20
-        }}>
-          <AlertTriangle size={18} />
+        <div className="flex items-center gap-3 p-4 bg-nw-fail-bg border border-nw-fail/30 rounded-md text-nw-fail text-sm font-medium mb-6">
+          <AlertTriangle size={18} className="shrink-0" />
           <div>
             <strong>Synchronization Error:</strong> {syncError}
           </div>
@@ -230,36 +279,16 @@ export function SyncCenterPage() {
 
       {/* Last Sync Stats */}
       {syncStats && (
-        <div style={{
-          padding: '12px 16px',
-          background: 'rgba(16,185,129,0.08)',
-          border: '1px solid #10B981',
-          borderRadius: 8,
-          color: '#065F46',
-          fontSize: '0.8125rem',
-          marginBottom: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <CheckCircle2 size={18} color="#10B981" />
+        <div className="flex items-center gap-3 p-4 bg-nw-pass-bg border border-nw-pass/30 rounded-md text-nw-pass text-sm font-medium mb-6">
+          <CheckCircle2 size={18} className="shrink-0" />
           <span>
             Batch sync processed <strong>{syncStats.processed}</strong> records: <strong>{syncStats.created}</strong> inserted, <strong>{syncStats.duplicates}</strong> duplicates skipped, <strong>{syncStats.failed}</strong> failed.
           </span>
         </div>
       )}
 
-      {/* Filter Tabs */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        marginBottom: 16,
-        borderBottom: '1px solid var(--nw-card-border)',
-        paddingBottom: 10,
-      }}>
-        <div style={{ display: 'flex', gap: 6 }}>
+      <FilterBar filters={activeFilters} onRemoveFilter={handleRemoveFilter} onClearAll={handleClearAll}>
+        <div className="flex items-center gap-2">
           {[
             { id: 'all', label: `All Local (${localRecords.length})` },
             { id: 'pending', label: `Pending Sync (${counts.pending})` },
@@ -271,31 +300,17 @@ export function SyncCenterPage() {
               key={tab.id}
               type="button"
               onClick={() => setFilterTab(tab.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 6,
-                fontSize: '0.8125rem',
-                fontWeight: filterTab === tab.id ? 600 : 400,
-                background: filterTab === tab.id ? 'var(--nw-sidebar-active)' : 'transparent',
-                color: filterTab === tab.id ? '#0284C7' : 'var(--nw-text-muted)',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                filterTab === tab.id 
+                  ? 'bg-[#0284C7] text-white' 
+                  : 'bg-nw-surface-2 text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-3 border border-nw-border-2'
+              }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-
-        <button
-          type="button"
-          className="btn btn--outline"
-          onClick={loadLocalRecords}
-          style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-        >
-          Refresh DB
-        </button>
-      </div>
+      </FilterBar>
 
       {/* Local Records Table */}
       {loadingDb ? (
@@ -303,106 +318,7 @@ export function SyncCenterPage() {
       ) : filteredRecords.length === 0 ? (
         <EmptyState message="No local observation records match this filter." />
       ) : (
-        <div style={{
-          background: 'var(--nw-card-bg)',
-          border: '1px solid var(--nw-card-border)',
-          borderRadius: 8,
-          overflow: 'hidden',
-          boxShadow: 'var(--nw-card-shadow)',
-        }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Sync Status</th>
-                <th>Client ID / Household</th>
-                <th>Ward</th>
-                <th>Parameter & Result</th>
-                <th>Sampled Timestamp</th>
-                <th>GPS Location</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecords.map(obs => {
-                const hasGps = obs.location && obs.location.lat != null && obs.location.lng != null;
-                const isFailed = obs.syncStatus === 'failed';
-
-                return (
-                  <tr key={obs.clientId}>
-                    <td>
-                      <SyncStatusBadge status={obs.syncStatus} />
-                      {obs.failReason && (
-                        <div style={{ fontSize: '0.6875rem', color: '#DC2626', marginTop: 4, maxWidth: 160 }}>
-                          {obs.failReason}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: 'var(--nw-text)' }}>
-                        {obs.householdId}
-                      </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>
-                        <code>{obs.clientId}</code>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '0.8125rem' }}>{obs.wardId}</span>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--nw-text)' }}>
-                        {obs.result} {testTypeUnit(obs.testType)}
-                      </div>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--nw-text-faint)' }}>
-                        {testTypeLabel(obs.testType)}
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--nw-text-muted)' }}>
-                        {formatDateTime(obs.testedAt)}
-                      </span>
-                    </td>
-                    <td>
-                      {hasGps ? (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--nw-text)' }}>
-                          {obs.location.lat?.toFixed(4)}, {obs.location.lng?.toFixed(4)}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.6875rem', color: '#D97706', fontWeight: 600 }}>
-                          Missing GPS
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                        {isFailed && (
-                          <button
-                            type="button"
-                            className="btn btn--outline"
-                            onClick={() => handleRetry(obs.clientId)}
-                            title="Retry syncing this record"
-                            style={{ padding: '3px 8px', fontSize: '0.75rem', color: '#0284C7' }}
-                          >
-                            <RotateCcw size={12} style={{ marginRight: 4 }} />
-                            Retry
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="btn btn--outline"
-                          onClick={() => handleDelete(obs.clientId)}
-                          title="Delete from local database"
-                          style={{ padding: '3px 8px', fontSize: '0.75rem', color: '#DC2626' }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={columns} data={filteredRecords} />
       )}
     </div>
   );
