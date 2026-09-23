@@ -17,7 +17,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000,http:
 app.use(cors({
   origin: allowedOrigins,
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
