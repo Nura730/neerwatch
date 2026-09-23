@@ -7,10 +7,12 @@
  */
 require('dotenv').config();
 const mongoose    = require('mongoose');
+const bcrypt      = require('bcryptjs');
 const Observation = require('../src/models/Observation');
 const Cluster     = require('../src/models/Cluster');
 const Alert       = require('../src/models/Alert');
 const Rainfall    = require('../src/models/Rainfall');
+const User        = require('../src/models/User');
 const { runClusterDetection } = require('../src/services/clusterDetection');
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -226,6 +228,7 @@ async function seed() {
     Cluster.deleteMany({}),
     Alert.deleteMany({}),
     Rainfall.deleteMany({}),
+    User.deleteMany({}),
   ]);
 
   const allObs = [
@@ -257,13 +260,28 @@ async function seed() {
   const positiveCount = Obs.filter((o) => isFailing(o.testType, o.result)).length;
   const missingCount  = await Observation.countDocuments({ 'location.type': { $exists: false } });
 
+  // ── Seed demo users (development / demo only) ────────────────────────────
+  console.log('Seeding demo users...');
+  const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+  const seedUsers = [
+    { email: process.env.SEED_ADMIN_EMAIL    || 'admin@neerwatch.local',    password: process.env.SEED_ADMIN_PASSWORD    || 'ChangeThisPassword1!', role: 'admin' },
+    { email: process.env.SEED_OPERATOR_EMAIL || 'operator@neerwatch.local', password: process.env.SEED_OPERATOR_PASSWORD || 'ChangeThisPassword2!', role: 'operator' },
+    { email: process.env.SEED_VIEWER_EMAIL   || 'viewer@neerwatch.local',   password: process.env.SEED_VIEWER_PASSWORD   || 'ChangeThisPassword3!', role: 'viewer' },
+  ];
+  for (const u of seedUsers) {
+    const hash = await bcrypt.hash(u.password, ROUNDS);
+    await User.create({ email: u.email, password: hash, role: u.role });
+    console.log(`  Created ${u.role}: ${u.email}`);
+  }
+
   console.log('\nSeed complete.');
-  console.log(`  Observations     : ${allObs.length}`);
+  console.log(`  Observations      : ${allObs.length}`);
   console.log(`  Positive (failing): ${positiveCount}`);
-  console.log(`  Missing location : ${missingCount}`);
-  console.log(`  Clusters detected: ${clusterCount}`);
-  console.log(`  Alerts generated : ${alertCount}`);
-  console.log(`  Rainfall records : ${rainfallDocs.length}`);
+  console.log(`  Missing location  : ${missingCount}`);
+  console.log(`  Clusters detected : ${clusterCount}`);
+  console.log(`  Alerts generated  : ${alertCount}`);
+  console.log(`  Rainfall records  : ${rainfallDocs.length}`);
+  console.log(`  Users             : ${seedUsers.length} (admin, operator, viewer)`);
 
   await mongoose.disconnect();
 }

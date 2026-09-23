@@ -1,5 +1,6 @@
 const { Router } = require('express');
 
+const authRouter      = require('./auth');
 const testsRouter     = require('./tests');
 const clustersRouter  = require('./clusters');
 const alertsRouter    = require('./alerts');
@@ -9,6 +10,7 @@ const rainfallRouter  = require('./rainfall');
 
 const router = Router();
 
+router.use('/auth',      authRouter);
 router.use('/tests',     testsRouter);
 router.use('/clusters',  clustersRouter);
 router.use('/alerts',    alertsRouter);
