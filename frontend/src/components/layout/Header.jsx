@@ -80,7 +80,7 @@ export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime, onMenu
                 <span className="text-[11px] text-nw-text-muted font-medium">{ROLE_LABELS[user.role] || user.role}</span>
               </div>
             </div>
-            
+
             <button
               onClick={logout}
               className="flex items-center gap-1.5 text-nw-text-muted hover:text-nw-fail transition-colors text-sm font-medium"

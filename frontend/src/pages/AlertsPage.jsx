@@ -6,22 +6,25 @@ import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/
 import { StatusBadge } from '../components/ui/StatusBadge.jsx';
 import { DataTable } from '../components/ui/DataTable.jsx';
 import { FilterBar } from '../components/ui/FilterBar.jsx';
+import { CreateFieldTaskModal } from '../components/ui/CreateFieldTaskModal.jsx';
 import { formatDateTime } from '../utils/format.js';
 import {
   Info,
   MapPin,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  ClipboardPlus
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { canResolveAlert } from '../auth/permissions.js';
+import { canResolveAlert, canManageFieldTasks } from '../auth/permissions.js';
 
 export function AlertsPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [filterStatus, setFilterStatus] = useState('active'); // 'all' | 'active' | 'resolved'
-  const [filterWard, setFilterWard] = useState('');
-  const [resolvingId, setResolvingId] = useState(null);
+  const { user }   = useAuth();
+  const navigate   = useNavigate();
+  const [filterStatus, setFilterStatus] = useState('active');
+  const [filterWard, setFilterWard]     = useState('');
+  const [resolvingId, setResolvingId]   = useState(null);
+  const [createTask, setCreateTask]     = useState(null);
 
   const fetchAlerts = useCallback(() => {
     const params = {};
@@ -130,6 +133,18 @@ export function AlertsPage() {
               <CheckCircle size={14} /> {resolvingId === a.id ? 'Resolving...' : 'Resolve'}
             </button>
           )}
+          {user && canManageFieldTasks(user.role) && (
+            <button
+              onClick={() => setCreateTask({
+                wardId:      a.wardId,
+                title:       `Investigate alert — ${a.wardId}`,
+                description: a.message || a.title || '',
+              })}
+              className="nw-btn nw-btn-secondary nw-btn-sm"
+            >
+              <ClipboardPlus size={14} /> Field Task
+            </button>
+          )}
         </div>
       )
     }
@@ -201,11 +216,18 @@ export function AlertsPage() {
       )}
 
       {!loading && !error && displayedAlerts.length > 0 && (
-        <DataTable 
-          columns={columns} 
-          data={displayedAlerts} 
+        <DataTable
+          columns={columns}
+          data={displayedAlerts}
         />
       )}
+
+      <CreateFieldTaskModal
+        open={createTask !== null}
+        prefill={createTask || {}}
+        onClose={() => setCreateTask(null)}
+        onCreated={() => setCreateTask(null)}
+      />
     </div>
   );
 }

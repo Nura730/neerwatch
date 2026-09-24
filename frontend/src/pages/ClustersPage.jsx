@@ -6,6 +6,7 @@ import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/
 import { StatusBadge } from '../components/ui/StatusBadge.jsx';
 import { FilterBar } from '../components/ui/FilterBar.jsx';
 import { ClusterEvidence } from '../components/ui/ClusterEvidence.jsx';
+import { CreateFieldTaskModal } from '../components/ui/CreateFieldTaskModal.jsx';
 import {
   formatDate,
   formatDateTime,
@@ -19,13 +20,18 @@ import {
   ExternalLink,
   Info,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  ClipboardPlus
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { canManageFieldTasks } from '../auth/permissions.js';
 
 export function ClustersPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [filterActive, setFilterActive] = useState('active'); // 'all' | 'active' | 'resolved'
-  const [filterWard, setFilterWard] = useState('');
+  const [filterActive, setFilterActive] = useState('active');
+  const [filterWard, setFilterWard]     = useState('');
+  const [createTask, setCreateTask]     = useState(null); // prefill object or null
 
   const fetchClusters = useCallback(() => {
     const params = {};
@@ -172,7 +178,7 @@ export function ClustersPage() {
               </div>
 
               {/* Actions */}
-              <div className="p-4 border-t border-nw-border bg-nw-surface-2 mt-auto">
+              <div className="p-4 border-t border-nw-border bg-nw-surface-2 mt-auto flex flex-col gap-2">
                 <button
                   type="button"
                   className="w-full nw-btn nw-btn-secondary"
@@ -180,11 +186,31 @@ export function ClustersPage() {
                 >
                   Inspect On Geographic Map <ExternalLink size={14} />
                 </button>
+                {user && canManageFieldTasks(user.role) && (
+                  <button
+                    type="button"
+                    className="w-full nw-btn nw-btn-primary"
+                    onClick={() => setCreateTask({
+                      wardId:      cluster.wardId,
+                      title:       `Investigate ${testTypeLabel(cluster.testType)} cluster — ${cluster.wardId}`,
+                      description: `Field investigation for ${testTypeLabel(cluster.testType)} contamination cluster detected at ${cluster.wardId}. Radius: ${formatMetres(cluster.radiusMetres)}.`,
+                    })}
+                  >
+                    <ClipboardPlus size={14} /> Create Field Task
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <CreateFieldTaskModal
+        open={createTask !== null}
+        prefill={createTask || {}}
+        onClose={() => setCreateTask(null)}
+        onCreated={() => setCreateTask(null)}
+      />
     </div>
   );
 }

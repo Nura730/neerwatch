@@ -38,7 +38,7 @@ import { authService } from '../auth/authService.js';
  */
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  
+
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   const token = authService.getToken();
   if (token) {
@@ -67,7 +67,6 @@ async function apiFetch(path, options = {}) {
 
   if (!body.success) {
     const msg = body.message || `Request failed with HTTP ${response.status}`;
-    // Optionally handle 403 differently if needed, but throwing Error is fine
     throw new Error(msg);
   }
 
@@ -123,7 +122,6 @@ export async function getTests(params = {}) {
 export async function createTest(body) {
   if (USE_MOCK) {
     await mockDelay(200);
-    // Return the observation echoed back with a server timestamp
     return { ...body, createdAt: new Date().toISOString() };
   }
   return apiFetch('/api/tests', {
@@ -242,4 +240,122 @@ export async function getWards() {
     return MOCK_WARDS.data;
   }
   return apiFetch('/api/wards');
+}
+
+// ── Field Tasks ───────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/field-tasks
+ * List field investigation tasks.
+ * @param {{ status?, wardId?, priority?, assignedTo?, page?, limit? }} params
+ */
+export async function getFieldTasks(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { tasks: [] };
+  }
+  return apiFetch(`/api/field-tasks${buildQuery(params)}`);
+}
+
+/**
+ * GET /api/field-tasks/:id
+ * Get a single field task by ID.
+ */
+export async function getFieldTask(id) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { task: null };
+  }
+  return apiFetch(`/api/field-tasks/${id}`);
+}
+
+/**
+ * POST /api/field-tasks
+ * Create a new field task.
+ * @param {{ title, wardId, description?, location?, priority?, dueAt?, sourceObservationId?, assignedTo? }} body
+ */
+export async function createFieldTask(body) {
+  if (USE_MOCK) {
+    await mockDelay(300);
+    throw new Error('Field task creation requires a live backend connection.');
+  }
+  return apiFetch('/api/field-tasks', { method: 'POST', body: JSON.stringify(body) });
+}
+
+/**
+ * PATCH /api/field-tasks/:id
+ * Updates title/description/wardId/location/priority/dueAt (NOT status or assignedTo).
+ * @param {string} id
+ * @param {Object} body
+ */
+export async function updateFieldTask(id, body) {
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Field task updates require a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+/**
+ * PATCH /api/field-tasks/:id/assign
+ * @param {{ assignedTo: string|null }} body — null to unassign
+ */
+export async function assignFieldTask(id, body) {
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Task assignment requires a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}/assign`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+/**
+ * PATCH /api/field-tasks/:id/status
+ * @param {{ status: 'pending'|'assigned'|'in_progress'|'completed'|'cancelled' }} body
+ */
+export async function updateFieldTaskStatus(id, body) {
+  if (USE_MOCK) {
+    await mockDelay(200);
+    throw new Error('Status updates require a live backend connection.');
+  }
+  return apiFetch(`/api/field-tasks/${id}/status`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/analytics/contamination-trend
+ * Time-series contamination analytics. Requires authentication.
+ * @param {{ wardId?, testType?, from?, to?, interval?: 'day'|'week'|'month' }} params
+ */
+export async function getContaminationTrend(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { wardId: null, testType: null, interval: params.interval || 'day', series: [] };
+  }
+  return apiFetch(`/api/analytics/contamination-trend${buildQuery(params)}`);
+}
+
+/**
+ * GET /api/analytics/data-quality
+ * Data quality summary: missing locations, stale, implausible observations. Requires authentication.
+ */
+export async function getDataQuality() {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { missingLocation: 0, stale: 0, implausible: 0, total: 0 };
+  }
+  return apiFetch('/api/analytics/data-quality');
+}
+
+/**
+ * GET /api/analytics/anomaly
+ * Anomaly detection signal comparing recent vs baseline contamination rate. Requires authentication.
+ * @param {{ wardId?, testType? }} params
+ */
+export async function getAnomalySignal(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { anomalyDetected: false, recentRate: 0, baselineRate: 0, recentCount: 0, baselineCount: 0, threshold: 1.5 };
+  }
+  return apiFetch(`/api/analytics/anomaly${buildQuery(params)}`);
 }

@@ -10,19 +10,21 @@ import {
   CloudRain,
   RefreshCw,
   Users,
-  X
+  ClipboardCheck,
+  BarChart2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext.jsx';
-import { canCreateTest, canSyncTests, canManageUsers } from '../../auth/permissions.js';
+import { canCreateTest, canSyncTests, canManageUsers, canManageFieldTasks } from '../../auth/permissions.js';
 
 const OBSERVATION_ITEMS = [
-  { to: '/',              icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/observations',  icon: ClipboardList,   label: 'Tests' },
-  { to: '/map',           icon: Map,             label: 'Map' },
-  { to: '/clusters',      icon: GitMerge,        label: 'Clusters' },
-  { to: '/alerts',        icon: Bell,            label: 'Alerts' },
-  { to: '/wards',         icon: Building2,       label: 'Wards' },
-  { to: '/rainfall',      icon: CloudRain,       label: 'Rainfall' },
+  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/observations', icon: ClipboardList,   label: 'Tests' },
+  { to: '/map',          icon: Map,             label: 'Map' },
+  { to: '/clusters',     icon: GitMerge,        label: 'Clusters' },
+  { to: '/alerts',       icon: Bell,            label: 'Alerts' },
+  { to: '/wards',        icon: Building2,       label: 'Wards' },
+  { to: '/rainfall',     icon: CloudRain,       label: 'Rainfall' },
 ];
 
 function NavItem({ to, icon: Icon, label, badge, end = false, onClick }) {
@@ -49,8 +51,8 @@ function NavItem({ to, icon: Icon, label, badge, end = false, onClick }) {
 export function Sidebar({ pendingCount, isOpen, onClose }) {
   const { user } = useAuth();
   const role = user ? user.role : null;
-  const showOperations = role && (canCreateTest(role) || canSyncTests(role));
-  const showAdmin = role && canManageUsers(role);
+  const showOperations = role && (canCreateTest(role) || canSyncTests(role) || canManageFieldTasks(role));
+  const showAdmin      = role && canManageUsers(role);
 
   return (
     <nav
@@ -110,6 +112,19 @@ export function Sidebar({ pendingCount, isOpen, onClose }) {
                 ) : null}
               />
             )}
+            {canManageFieldTasks(role) && (
+              <NavItem to="/field-work" icon={ClipboardCheck} label="Field Work" onClick={onClose} />
+            )}
+          </div>
+        )}
+
+        {/* Insights — analytics visible to all authenticated users */}
+        {role && (
+          <div>
+            <h3 className="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Insights
+            </h3>
+            <NavItem to="/analytics" icon={BarChart2} label="Analytics" onClick={onClose} />
           </div>
         )}
 
@@ -125,7 +140,7 @@ export function Sidebar({ pendingCount, isOpen, onClose }) {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-slate-800 text-xs text-slate-500">
-        Ernakulam / Kochi · Demo
+        <p>Ernakulam / Kochi · Demo</p>
       </div>
     </nav>
   );

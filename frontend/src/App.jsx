@@ -17,6 +17,8 @@ import { WardsPage } from './pages/WardsPage.jsx';
 import { RainfallPage } from './pages/RainfallPage.jsx';
 import { SyncCenterPage } from './pages/SyncCenterPage.jsx';
 import { UsersPage } from './pages/UsersPage.jsx';
+import { FieldWorkPage } from './pages/FieldWorkPage.jsx';
+import { AnalyticsPage } from './pages/AnalyticsPage.jsx';
 
 export default function App() {
   const syncEngine = useSyncEngine();
@@ -26,7 +28,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          
+
           <Route element={<AppShell {...syncEngine} />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
@@ -51,6 +53,8 @@ export default function App() {
                 <UsersPage />
               </RoleGuard>
             } />
+            <Route path="field-work" element={<FieldWorkPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
