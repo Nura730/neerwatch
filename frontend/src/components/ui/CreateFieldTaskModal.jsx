@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { createFieldTask } from '../../services/api.js';
 import { useApiData } from '../../hooks/useApiData.js';
