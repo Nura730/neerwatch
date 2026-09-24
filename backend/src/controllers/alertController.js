@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 const Alert = require('../models/Alert');
 const { successResponse, errorResponse } = require('../utils/response');
+const { computeAlertPrioritySignal } = require('../services/smartPrioritization');
 
 function formatAlert(doc) {
   const a = doc.toObject ? doc.toObject() : doc;
-  return {
+  const base = {
     id:         a._id.toString(),
     clusterId:  a.clusterId.toString(),
     severity:   a.severity,
@@ -14,6 +15,9 @@ function formatAlert(doc) {
     resolved:   a.resolved,
     resolvedAt: a.resolvedAt || null,
   };
+  // Additive prioritization signal — does not replace severity
+  const prioritySignal = computeAlertPrioritySignal(base);
+  return { ...base, prioritySignal };
 }
 
 async function listAlerts(req, res, next) {
