@@ -44,9 +44,9 @@ export function ObservationDetailDrawer({ observation, onClose }) {
             <div>
               <h3 className="nw-label mb-2">Identifiers</h3>
               <div className="bg-nw-surface-2 rounded p-3 text-sm">
-                <div className="flex justify-between mb-2">
-                  <span className="text-nw-text-muted">Observation ID</span>
-                  <span className="nw-mono font-medium">{observation.clientId || observation._id}</span>
+                <div className="flex justify-between gap-2 mb-2 min-w-0">
+                  <span className="text-nw-text-muted shrink-0">Observation ID</span>
+                  <span className="nw-mono font-medium truncate text-right">{observation.clientId || observation._id}</span>
                 </div>
                 {observation.householdId && (
                   <div className="flex justify-between">

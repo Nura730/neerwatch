@@ -50,13 +50,13 @@ export function DashboardPage() {
           <h1 className="text-xl font-bold text-nw-text m-0">Dashboard</h1>
           <p className="text-sm text-nw-text-muted m-0">System-wide operational overview</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center flex-wrap gap-2">
           <div className={`flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-full ${isOnline ? 'bg-nw-pass-bg text-nw-pass' : 'bg-nw-warn-bg text-nw-warn'}`}>
             {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
             {isOnline ? 'System Online' : 'System Offline'}
           </div>
           {lastSyncTime && (
-            <div className="text-xs text-nw-text-muted hidden sm:block">
+            <div className="hidden sm:block text-xs text-nw-text-muted">
               Last sync: {formatDateTime(lastSyncTime)}
             </div>
           )}

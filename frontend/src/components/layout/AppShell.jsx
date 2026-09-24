@@ -29,6 +29,7 @@ export function AppShell({
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-nw-bg font-sans text-nw-text selection:bg-nw-teal selection:text-white">
+      {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -36,7 +37,13 @@ export function AppShell({
           aria-hidden="true"
         />
       )}
-      <Sidebar pendingCount={pendingCount} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <Sidebar
+        pendingCount={pendingCount}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
       <div className="flex-1 flex flex-col h-full min-w-0">
         <Header
           isOnline={isOnline}

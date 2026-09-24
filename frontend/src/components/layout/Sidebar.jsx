@@ -64,7 +64,7 @@ export function Sidebar({ pendingCount, isOpen, onClose }) {
       ].join(' ')}
       aria-label="Main navigation"
     >
-      {/* Brand */}
+      {/* Brand + mobile close button */}
       <div className="px-5 pt-6 pb-5 border-b border-slate-800 flex items-start justify-between">
         <div>
           <div className="font-bold text-base text-slate-100 tracking-wider">
@@ -76,8 +76,8 @@ export function Sidebar({ pendingCount, isOpen, onClose }) {
         </div>
         <button
           onClick={onClose}
-          className="md:hidden p-1 text-slate-400 hover:text-slate-200 mt-0.5"
-          aria-label="Close navigation"
+          className="md:hidden -mr-2 p-1.5 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+          aria-label="Close menu"
         >
           <X size={18} />
         </button>

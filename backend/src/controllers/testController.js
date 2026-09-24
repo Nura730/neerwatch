@@ -1,8 +1,10 @@
+const mongoose                 = require('mongoose');
 const Observation              = require('../models/Observation');
 const { validateObservation }  = require('../validators/observationValidator');
 const { runClusterDetection }  = require('../services/clusterDetection');
 const { toGeoJSON, fromGeoJSON } = require('../utils/geo');
 const { successResponse, errorResponse } = require('../utils/response');
+const { computeConfidence, dupKey } = require('../services/confidenceScoring');
 
 function formatObs(doc) {
   const o = doc.toObject ? doc.toObject() : doc;
@@ -16,6 +18,20 @@ function formatObs(doc) {
     wardId:      o.wardId,
     createdAt:   o.createdAt,
   };
+}
+
+// Attach confidence fields to a list of already-formatted observations.
+// Duplicate detection is batch-scoped (within the returned set).
+function withConfidenceBatch(formattedList) {
+  const countMap = new Map();
+  for (const obs of formattedList) {
+    const k = dupKey(obs.householdId, obs.testType, obs.testedAt);
+    countMap.set(k, (countMap.get(k) || 0) + 1);
+  }
+  return formattedList.map(obs => {
+    const isDuplicate = (countMap.get(dupKey(obs.householdId, obs.testType, obs.testedAt)) || 0) > 1;
+    return { ...obs, ...computeConfidence(obs, { isDuplicate }) };
+  });
 }
 
 function buildObsData(body) {
@@ -78,17 +94,14 @@ async function listTests(req, res, next) {
       }
     }
 
-    const [observations, total] = await Promise.all([
+    const [rawObs, total] = await Promise.all([
       Observation.find(filter).sort({ testedAt: -1 }).skip(skip).limit(limit),
       Observation.countDocuments(filter),
     ]);
 
-    return successResponse(res, {
-      observations: observations.map(formatObs),
-      total,
-      page,
-      limit,
-    });
+    const observations = withConfidenceBatch(rawObs.map(formatObs));
+
+    return successResponse(res, { observations, total, page, limit });
   } catch (err) {
     next(err);
   }
@@ -113,8 +126,9 @@ async function mapTests(req, res, next) {
       }
     }
 
-    const observations = await Observation.find(filter).sort({ testedAt: -1 }).limit(1000);
-    return successResponse(res, { observations: observations.map(formatObs) });
+    const rawObs = await Observation.find(filter).sort({ testedAt: -1 }).limit(1000);
+    const observations = withConfidenceBatch(rawObs.map(formatObs));
+    return successResponse(res, { observations });
   } catch (err) {
     next(err);
   }
@@ -163,4 +177,32 @@ async function syncTests(req, res, next) {
   }
 }
 
-module.exports = { createTest, listTests, mapTests, syncTests };
+async function getTestConfidence(req, res, next) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return errorResponse(res, 'Invalid observation id', 400);
+    }
+    const obs = await Observation.findById(req.params.id);
+    if (!obs) return errorResponse(res, 'Observation not found', 404);
+
+    const formatted = formatObs(obs);
+
+    // Detect duplicates: another observation with same household + test type within the same 1-hour bucket
+    const bucket = Math.floor(new Date(obs.testedAt).getTime() / (1000 * 3600));
+    const hourStart = new Date(bucket * 1000 * 3600);
+    const hourEnd   = new Date((bucket + 1) * 1000 * 3600);
+    const dupCount = await Observation.countDocuments({
+      _id:         { $ne: obs._id },
+      householdId: obs.householdId,
+      testType:    obs.testType,
+      testedAt:    { $gte: hourStart, $lt: hourEnd },
+    });
+
+    const confidence = computeConfidence(formatted, { isDuplicate: dupCount > 0 });
+    return successResponse(res, confidence);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { createTest, listTests, mapTests, syncTests, getTestConfidence };

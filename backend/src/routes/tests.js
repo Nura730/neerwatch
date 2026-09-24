@@ -1,12 +1,13 @@
 const { Router } = require('express');
-const { createTest, listTests, mapTests, syncTests } = require('../controllers/testController');
+const { createTest, listTests, mapTests, syncTests, getTestConfidence } = require('../controllers/testController');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = Router();
 
 // Read-only endpoints — publicly accessible without authentication
-router.get('/map',   mapTests);
-router.get('/',      listTests);
+router.get('/map',           mapTests);
+router.get('/:id/confidence', getTestConfidence);
+router.get('/',              listTests);
 
 // Operators and admins may create/sync observations; viewers may not
 router.post('/sync', requireAuth, requireRole('operator', 'admin'), syncTests);

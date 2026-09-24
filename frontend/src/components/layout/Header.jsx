@@ -14,12 +14,12 @@ export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime, onMenu
 
   return (
     <header className="h-[60px] px-4 sm:px-6 bg-white border-b border-nw-border flex items-center shrink-0 z-10 shadow-sm justify-between">
-      {/* Title */}
+      {/* Hamburger (mobile only) + Title */}
       <div className="flex items-center">
         <button
           onClick={onMenuToggle}
-          className="md:hidden mr-3 -ml-1 p-2 rounded text-nw-text-muted hover:bg-nw-surface-2 transition-colors"
-          aria-label="Toggle navigation"
+          className="md:hidden mr-3 -ml-1 p-2 rounded text-nw-text-muted hover:text-nw-text hover:bg-nw-surface-2 transition-colors"
+          aria-label="Open navigation menu"
         >
           <Menu size={20} />
         </button>
@@ -80,7 +80,7 @@ export function Header({ isOnline, pendingCount, isSyncing, lastSyncTime, onMenu
                 <span className="text-[11px] text-nw-text-muted font-medium">{ROLE_LABELS[user.role] || user.role}</span>
               </div>
             </div>
-            
+
             <button
               onClick={logout}
               className="flex items-center gap-1.5 text-nw-text-muted hover:text-nw-fail transition-colors text-sm font-medium"
