@@ -334,3 +334,28 @@ export async function getContaminationTrend(params = {}) {
   }
   return apiFetch(`/api/analytics/contamination-trend${buildQuery(params)}`);
 }
+
+/**
+ * GET /api/analytics/data-quality
+ * Data quality summary: missing locations, stale, implausible observations. Requires authentication.
+ */
+export async function getDataQuality() {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { missingLocation: 0, stale: 0, implausible: 0, total: 0 };
+  }
+  return apiFetch('/api/analytics/data-quality');
+}
+
+/**
+ * GET /api/analytics/anomaly
+ * Anomaly detection signal comparing recent vs baseline contamination rate. Requires authentication.
+ * @param {{ wardId?, testType? }} params
+ */
+export async function getAnomalySignal(params = {}) {
+  if (USE_MOCK) {
+    await mockDelay();
+    return { anomalyDetected: false, recentRate: 0, baselineRate: 0, recentCount: 0, baselineCount: 0, threshold: 1.5 };
+  }
+  return apiFetch(`/api/analytics/anomaly${buildQuery(params)}`);
+}

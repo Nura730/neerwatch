@@ -10,11 +10,11 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useApiData } from '../hooks/useApiData.js';
-import { getContaminationTrend, getWards } from '../services/api.js';
+import { getContaminationTrend, getWards, getDataQuality, getAnomalySignal } from '../services/api.js';
 import { PageHeader, LoadingState, ErrorState, EmptyState } from '../components/ui/States.jsx';
 import { FilterBar } from '../components/ui/FilterBar.jsx';
 import { formatNumber } from '../utils/format.js';
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, AlertTriangle, CheckCircle, MapPin, Clock } from 'lucide-react';
 
 const INTERVALS = [
   { value: 'day',   label: 'Day' },
@@ -74,6 +74,8 @@ export function AnalyticsPage() {
 
   const { data, loading, error, refetch } = useApiData(fetchFn, [fetchFn]);
   const { data: wardsData }               = useApiData(getWards, []);
+  const { data: qualityData }             = useApiData(getDataQuality, []);
+  const { data: anomalyData }             = useApiData(getAnomalySignal, []);
   const wards = wardsData?.wards || [];
 
   const series = useMemo(() => data?.series || [], [data]);
@@ -289,6 +291,107 @@ export function AnalyticsPage() {
               </p>
             </div>
           )}
+
+          {/* Smart feature panels */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            {/* Anomaly Signal */}
+            <div className="bg-nw-surface border border-nw-border rounded-md shadow-nw-sm p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle size={16} className="text-nw-warn shrink-0" />
+                <h2 className="text-sm font-bold text-nw-text">Anomaly Signal</h2>
+              </div>
+              {anomalyData ? (
+                anomalyData.anomalyDetected ? (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-nw-fail-bg text-nw-fail">
+                        <AlertTriangle size={11} /> Anomaly Detected
+                      </span>
+                    </div>
+                    <p className="text-sm text-nw-text-2 mb-3">
+                      Recent contamination rate is significantly elevated above the historical baseline.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-nw-bg rounded p-2">
+                        <div className="text-lg font-bold text-nw-fail tabular-nums">{anomalyData.recentRate}%</div>
+                        <div className="text-[10px] text-nw-text-muted uppercase tracking-wide mt-0.5">Recent (7d)</div>
+                      </div>
+                      <div className="bg-nw-bg rounded p-2">
+                        <div className="text-lg font-bold text-nw-text tabular-nums">{anomalyData.baselineRate}%</div>
+                        <div className="text-[10px] text-nw-text-muted uppercase tracking-wide mt-0.5">Baseline</div>
+                      </div>
+                      <div className="bg-nw-bg rounded p-2">
+                        <div className="text-lg font-bold text-nw-warn tabular-nums">{anomalyData.threshold}×</div>
+                        <div className="text-[10px] text-nw-text-muted uppercase tracking-wide mt-0.5">Threshold</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-nw-pass">
+                    <CheckCircle size={16} />
+                    <span className="text-sm font-medium">No anomaly detected</span>
+                  </div>
+                )
+              ) : (
+                <p className="text-sm text-nw-text-muted">Anomaly data unavailable — requires authentication.</p>
+              )}
+              <p className="text-xs text-nw-text-faint mt-4 pt-3 border-t border-nw-border">
+                Compares the 7-day positive rate against an 8–90 day baseline. Triggers when recent rate exceeds {anomalyData?.threshold ?? 1.5}× baseline with at least 3 recent observations.
+              </p>
+            </div>
+
+            {/* Data Quality */}
+            <div className="bg-nw-surface border border-nw-border rounded-md shadow-nw-sm p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle size={16} className="text-nw-teal shrink-0" />
+                <h2 className="text-sm font-bold text-nw-text">Data Quality</h2>
+              </div>
+              {qualityData ? (
+                <>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-nw-text-2">
+                        <MapPin size={13} className="text-nw-text-muted" />
+                        Missing location
+                      </div>
+                      <span className={`text-sm font-bold tabular-nums ${qualityData.missingLocation > 0 ? 'text-nw-warn' : 'text-nw-pass'}`}>
+                        {formatNumber(qualityData.missingLocation)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-nw-text-2">
+                        <Clock size={13} className="text-nw-text-muted" />
+                        Stale (&gt;90 days)
+                      </div>
+                      <span className={`text-sm font-bold tabular-nums ${qualityData.stale > 0 ? 'text-nw-warn' : 'text-nw-pass'}`}>
+                        {formatNumber(qualityData.stale)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-nw-text-2">
+                        <AlertTriangle size={13} className="text-nw-text-muted" />
+                        Implausible values
+                      </div>
+                      <span className={`text-sm font-bold tabular-nums ${qualityData.implausible > 0 ? 'text-nw-fail' : 'text-nw-pass'}`}>
+                        {formatNumber(qualityData.implausible)}
+                      </span>
+                    </div>
+                  </div>
+                  {qualityData.total > 0 && (
+                    <div className="mt-3 pt-3 border-t border-nw-border flex justify-between text-xs text-nw-text-muted">
+                      <span>Total observations</span>
+                      <span className="font-semibold tabular-nums">{formatNumber(qualityData.total)}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-nw-text-muted">Data quality metrics unavailable — requires authentication.</p>
+              )}
+              <p className="text-xs text-nw-text-faint mt-4 pt-3 border-t border-nw-border">
+                Missing location excludes observations from spatial analysis. Stale observations are older than 90 days. Implausible values fall outside physical measurement bounds.
+              </p>
+            </div>
+          </div>
         </>
       )}
     </div>
